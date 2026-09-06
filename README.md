@@ -10,9 +10,10 @@
 | 路径 | 内容 | 维护方 |
 |---|---|---|
 | `index.html` | 知识中枢主站（AI 情报观察 / AI 实验室 / 关于我们），单文件自包含 | S1（按内容生产线构建导出更新） |
-| `mascot.html` | Wonder4ge 小屋（吉祥物互动页） | S1 |
-| `mascot-assets/` | Wonder4ge 正典立绘与表情差分裁切图（**禁止 AI 重绘/改色，只许缩放展示**） | 总控受控资产 |
+| `mascot.html` | Wonder4ge 小屋（吉祥物互动页），图片走 CDN（`https://cdn.onewonder.co.jp/media/mascot/`），本仓库不存图片 | S1 |
 | `design/` | 设计稿目录 | **设计负责人** |
+
+> 正典形象资产纪律：立绘与表情裁切禁止 AI 重绘/改色，只许缩放展示；源文件由内部受控管理，CDN 上的 `media/mascot/` 为发布副本。
 
 ## 协作流程（本站更新方向由设计负责人主导）
 
@@ -26,13 +27,13 @@
 
 知识库笔记内容由内部生产线构建导出为单文件 `index.html`（含全部公开笔记数据，已通过泄漏检查）。更新方式：用最新构建产物整文件替换根目录 `index.html`，commit 说明数据窗口期即可。
 
-## 架构方向（结构-内容分离）
+## 架构（结构-内容分离，已落地）
 
 - **本仓库 = 页面结构**：HTML/CSS/JS 与协作规范，部署在 GitHub Pages。
-- **内容/媒体 = 指定 S3**：视频、图片、实验数据等由其他仓库的生产线更新，上传到指定 S3 bucket；本页面通过公开 URL 引用/拉取展示。
-- **迁移计划**：`mascot-assets/`（约 20MB 正典立绘）暂存本仓库保证页面可用，S3 bucket 就绪后作为第一批媒体迁移对象，页面引用改为 S3 URL。
-- **数据拆分（目标态）**：当前 `index.html` 内嵌全部公开笔记数据；后续将笔记数据抽为 S3 上的 `kb-data.json` + `manifest.json`（含版本号），页面启动时拉取渲染——内容更新不再改动本仓库。
-- **S3 侧要求**：bucket 对 `onewonderjapan.github.io` 开 CORS（或绑自定义 CDN 域）、媒体文件用 hash 文件名配长缓存、manifest 短缓存、上传方用最小权限凭证。
+- **内容/媒体 = AWS S3 + CloudFront**：`s3://onewonder-public-content`（全私有，仅 CloudFront OAC 可读），对外统一走 `https://cdn.onewonder.co.jp`。基础设施由 Terraform 管理（内部 infra 目录），key 结构约定：`media/`（长缓存）、`data/`（不缓存）、`manifest.json`（版本+清单入口）。
+- **已完成**：吉祥物图片 16 张已迁移至 `media/mascot/`，`mascot.html` 按固定 CDN URL 引用；内容清单见 `https://cdn.onewonder.co.jp/manifest.json`。
+- **下一步**：把 `index.html` 内嵌的笔记数据抽为 `data/kb-data.json`，页面启动时拉取渲染——之后知识库内容更新不再改动本仓库。
+- **内容上传方要求**：其他仓库的生产线只向指定前缀上传（最小权限凭证），上传后必须更新 `manifest.json` 版本号；上传内容视同公开，先过泄漏扫描。
 
 ## 已知占位项（上线前待办）
 
@@ -41,4 +42,4 @@
 ## 红线
 
 - 本仓库**只放公开内容**：客户项目资料、内部笔记源文件、内部编排记录一律不得进入本仓库。
-- `mascot-assets/` 内为正典形象资产：禁止任何 AI 重绘、改色、二次创作，只允许缩放展示与按既有规范裁切。
+- 正典形象资产（CDN `media/mascot/` 与内部源文件）：禁止任何 AI 重绘、改色、二次创作，只允许缩放展示与按既有规范裁切。
