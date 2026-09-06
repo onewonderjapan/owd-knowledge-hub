@@ -38,15 +38,14 @@ bash scripts/publish-data.sh   # 构建（含泄漏护栏）→ 上传 CDN → �
 
 ## 架构（结构-内容分离，已落地）
 
-- **本仓库 = 页面结构**：HTML/CSS/JS 与协作规范，部署在 GitHub Pages。
+- **本仓库 = 页面结构**：HTML/CSS/JS 与协作规范。push 到 `main` 后由 GitHub Actions 经 OIDC（免密钥）同步到 AWS S3 + CloudFront，正式站为 `https://hub.onewonder.co.jp`；GitHub Pages 仅作备用镜像。
 - **内容/媒体 = AWS S3 + CloudFront**：`s3://onewonder-public-content`（全私有，仅 CloudFront OAC 可读），对外统一走 `https://cdn.onewonder.co.jp`。基础设施由 Terraform 管理（内部 infra 目录），key 结构约定：`media/`（长缓存）、`data/`（不缓存）、`manifest.json`（版本+清单入口）。
-- **已完成**：吉祥物图片 16 张已迁移至 `media/mascot/`，`mascot.html` 按固定 CDN URL 引用；内容清单见 `https://cdn.onewonder.co.jp/manifest.json`。
-- **下一步**：把 `index.html` 内嵌的笔记数据抽为 `data/kb-data.json`，页面启动时拉取渲染——之后知识库内容更新不再改动本仓库。
+- **已完成**：吉祥物图片 16 张已迁移至 `media/mascot/`，`mascot.html` 按固定 CDN URL 引用；知识库笔记数据已拆分为 `data/kb-data.json`，`index.html` 启动时拉取渲染，内容更新不再改动本仓库；内容清单见 `https://cdn.onewonder.co.jp/manifest.json`。
 - **内容上传方要求**：其他仓库的生产线只向指定前缀上传（最小权限凭证），上传后必须更新 `manifest.json` 版本号；上传内容视同公开，先过泄漏扫描。
 
-## 已知占位项（上线前待办）
+## 联系
 
-- 联系邮箱当前为 `contact@example.com` 占位，正式上线前替换为真实邮箱（涉及 index.html 内 3 处）。
+- 商务/合作联系：info@onewonder.co.jp
 
 ## 红线
 
