@@ -17,17 +17,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Debug OIDC claims (temporary)
-        run: |
-          curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com" \
-            | python3 -c "
-          import json,sys,base64
-          tok=json.load(sys.stdin)['value']
-          p=tok.split('.')[1]; p+='='*(-len(p)%4)
-          print(json.dumps(json.loads(base64.urlsafe_b64decode(p)),indent=1))
-          "
-
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
