@@ -2,8 +2,9 @@
 
 **OneWonder 知识中枢 · 公开站** — 对外公开信息的高光分析 + 自社 AI 实验室的实验产出。
 
-- 主站（GitHub Pages）：<https://onewonderjapan.github.io/owd-knowledge-hub/>
-- 吉祥物互动页「Wonder4ge 小屋」：<https://onewonderjapan.github.io/owd-knowledge-hub/mascot.html>
+- 正式地址（AWS CloudFront）：<https://hub.onewonder.co.jp/>
+- 吉祥物互动页「Wonder4ge 小屋」：<https://hub.onewonder.co.jp/mascot.html>
+- 备用镜像（GitHub Pages）：<https://onewonderjapan.github.io/owd-knowledge-hub/>
 
 ## 仓库结构
 
@@ -20,7 +21,7 @@
 1. **设计负责人**：产出新版设计稿（PNG / Figma 导出 / 设计说明 Markdown），上传到本仓库 `design/` 目录：
    - 文件命名：`YYYYMMDD-主题-vN`（例：`20260910-home-hero-v2.png`）
    - 每次上传在 `design/README.md` 的清单表中登记一行：日期、文件、变更要点、优先级
-2. **S1（开发）**：定期 `git pull` 拉取 `design/` 最新设计稿 → 按稿开发 → 更新 `index.html` / `mascot.html` 等站点文件 → push 到 `main` 即自动发布（GitHub Pages）。
+2. **S1（开发）**：定期 `git pull` 拉取 `design/` 最新设计稿 → 按稿开发 → 更新 `index.html` / `mascot.html` 等站点文件 → push 到 `main` 即自动发布（GitHub Actions 经 OIDC 免密钥同步到 AWS，见 `.github/workflows/deploy.yml`，通常 1-2 分钟生效）。
 3. **职责边界**：设计负责人不改站点代码，S1 不改设计稿；实现与设计稿有出入时以设计稿为准。紧急内容修正（错字、数据错误）S1 可直接改，事后在 commit message 注明。
 
 ## 内容更新（知识库数据）
