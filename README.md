@@ -26,7 +26,15 @@
 
 ## 内容更新（知识库数据）
 
-知识库笔记内容由内部生产线构建导出为单文件 `index.html`（含全部公开笔记数据，已通过泄漏检查）。更新方式：用最新构建产物整文件替换根目录 `index.html`，commit 说明数据窗口期即可。
+**内容更新不再改动本仓库**。知识库笔记数据发布在 CDN：`https://cdn.onewonder.co.jp/data/kb-data.json`，页面打开时自动拉取最新版。
+
+生产线更新流程（内部 workspace 执行）：
+
+```bash
+bash scripts/publish-data.sh   # 构建（含泄漏护栏）→ 上传 CDN → 更新 manifest
+```
+
+本仓库只承载页面结构：`index.html` / `mascot.html` 变更才会触发自动部署（GitHub Actions → AWS）。
 
 ## 架构（结构-内容分离，已落地）
 
