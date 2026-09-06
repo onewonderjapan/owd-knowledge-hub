@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<!--
+  Wonder4ge 小屋 · 单文件、纯前端、零外部依赖
+  图片部署假设：本文件与 mascot-assets/ 目录同级（图片相对路径 ./mascot-assets/*.png），
+  部署时请把 mascot.html 与 mascot-assets/ 整体拷贝到同一目录。
+  图片仅引用 mascot-assets/ 现有 8 张正典立绘（4 成员 × front/expr）及其派生裁切 mascot-assets/expr-crops/*.png，禁止修改图片本体。
+-->
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Wonder4ge 小屋 · 四位成员</title>
+<meta name="description" content="Wonder4ge 小屋：四位成员 yaya、gaga、juju、baibai 的互动卡片。悬停换表情、打招呼弹幕。单文件、纯前端、零外部依赖。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3E%3Crect x='4' y='8' width='22' height='16' rx='4' fill='%236d5ef0'/%3E%3Cpath d='M4 12l11 7 11-7' stroke='%23fff' stroke-width='2.2' fill='none'/%3E%3C/svg%3E">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f4f6fb">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0c0f16">
+<style>
+  :root{
+    --bg:#f4f6fb; --card:#ffffff; --ink:#20263a; --ink2:#5d6880; --ink3:#8a93ab;
+    --line:#e2e7f2; --chip:#eef1f9; --chip-ink:#4a5570;
+    --accent:#6d5ef0; --accent-ink:#ffffff;
+    --dan-bg:rgba(255,255,255,.86); --dan-ink:#3a4360; --dan-line:#dfe4f0;
+    --hero-bg:radial-gradient(120% 90% at 50% 0%, #edefff 0%, #f7f8fd 55%, #f1f3fa 100%);
+    --topbar:rgba(244,246,251,.82);
+    --shadow:0 10px 30px rgba(32,38,58,.08);
+    --yaya:#f0a8c9; --gaga:#5b8def; --juju:#9d7aea; --baibai:#f0a94b;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#0c0f16; --card:#141927; --ink:#e9ecf6; --ink2:#a3adc4; --ink3:#6f7a94;
+      --line:#232b3f; --chip:#1a2133; --chip-ink:#b9c2da;
+      --accent:#8d80ff; --accent-ink:#0c0f16;
+      --dan-bg:rgba(24,30,46,.88); --dan-ink:#d6dcee; --dan-line:#2c3450;
+      --hero-bg:radial-gradient(120% 90% at 50% 0%, #151b2e 0%, #0e1320 55%, #0b0e18 100%);
+      --topbar:rgba(12,15,22,.8);
+      --shadow:0 12px 32px rgba(0,0,0,.45);
+    }
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
+    background:var(--bg); color:var(--ink); line-height:1.7;
+    overflow-x:hidden;
+  }
+  .wrap{max-width:1020px;margin:0 auto;padding:0 18px}
+  a{color:var(--accent)}
+
+  /* ---------- 顶栏 ---------- */
+  .topbar{
+    position:sticky;top:0;z-index:30;
+    background:var(--topbar);
+    -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line);
+  }
+  .topbar-in{display:flex;align-items:center;gap:10px;padding:10px 0}
+  .logo{width:30px;height:30px;flex:0 0 auto}
+  .topbar b{font-size:15px;letter-spacing:.02em}
+  .topbar .sub{font-size:12px;color:var(--ink3);margin-left:auto;white-space:nowrap}
+  @media (max-width:480px){ .topbar .sub{display:none} }
+
+  /* ---------- 英雄区 + 弹幕层 ---------- */
+  .hero{
+    position:relative;margin-top:14px;border:1px solid var(--line);
+    border-radius:20px;background:var(--hero-bg);overflow:hidden;
+    padding:30px 22px 26px;box-shadow:var(--shadow);
+  }
+  .hero h1{font-size:clamp(26px,5.4vw,38px);letter-spacing:-.01em;line-height:1.25}
+  .hero h1 .amp{color:var(--accent)}
+  .hero .lede{color:var(--ink2);margin-top:6px;font-size:15px;max-width:42em}
+  #danmaku{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:3}
+  .dan{
+    position:absolute;left:100%;white-space:nowrap;max-width:78%;
+    font-size:13px;font-weight:600;color:var(--dan-ink);
+    background:var(--dan-bg);border:1px solid var(--dan-line);
+    border-radius:999px;padding:3px 12px;
+    will-change:transform,opacity;
+  }
+  .hero .badge{
+    position:absolute;top:12px;right:14px;z-index:3;pointer-events:none;
+    font-size:11px;font-weight:700;letter-spacing:.12em;color:var(--ink3);
+    background:var(--dan-bg);border:1px solid var(--dan-line);border-radius:999px;
+    padding:3px 10px;
+  }
+  .controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:16px;position:relative;z-index:4}
+  button{
+    font:inherit;cursor:pointer;border-radius:999px;
+    border:1px solid var(--line);background:var(--card);color:var(--ink);
+    padding:9px 18px;font-size:14px;font-weight:600;
+    transition:transform .12s ease, border-color .12s ease, background .12s ease, color .12s ease;
+    touch-action:manipulation;
+  }
+  button:hover{border-color:var(--accent);color:var(--accent)}
+  button:active{transform:scale(.96)}
+  button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .btn-wave{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+  .btn-wave:hover{filter:brightness(1.08);color:var(--accent-ink)}
+  .ctrl-note{font-size:12px;color:var(--ink3)}
+
+  /* ---------- 成员卡 ---------- */
+  section.block{padding:30px 0 6px}
+  .block-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+  .block-head h2{font-size:22px;letter-spacing:-.01em}
+  .block-head .tag{font-size:12px;color:var(--ink3);border:1px solid var(--line);border-radius:999px;padding:2px 10px}
+  .block-desc{color:var(--ink2);font-size:14px;margin-top:4px}
+
+  .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:16px}
+  @media (max-width:900px){ .cards{grid-template-columns:1fr 1fr} }
+  @media (max-width:440px){ .cards{grid-template-columns:1fr} }
+  .mcard{
+    background:var(--card);border:1px solid var(--line);border-radius:18px;
+    padding:16px 16px 14px;box-shadow:var(--shadow);
+    cursor:pointer;text-align:center;
+    transition:transform .15s ease, border-color .15s ease;
+  }
+  .mcard:hover,.mcard:focus-visible{transform:translateY(-4px);border-color:var(--member,var(--accent))}
+  .mcard:focus-visible{outline:2px solid var(--member,var(--accent));outline-offset:2px}
+  .picbox{
+    position:relative;width:100%;aspect-ratio:3/4;overflow:hidden;
+    border-radius:12px;background:var(--chip);
+  }
+  .picbox img{
+    position:absolute;inset:0;width:100%;height:100%;object-fit:contain;
+    transition:opacity .18s ease;
+  }
+  .picbox .expr-smile,.picbox .expr-surprised{opacity:0}
+  .mcard.excited .picbox .expr-smile{opacity:1}
+  .mcard.surprise .picbox .expr-surprised{opacity:1}
+  .mcard.surprise .picbox .expr-smile{opacity:0}
+  .mcard .hint{
+    position:absolute;left:50%;bottom:8px;transform:translateX(-50%);
+    font-size:11px;color:var(--ink3);background:var(--dan-bg);
+    border:1px solid var(--dan-line);border-radius:999px;padding:2px 10px;
+    white-space:nowrap;pointer-events:none;opacity:.9;transition:opacity .15s ease;
+  }
+  .mcard.excited .hint{opacity:0}
+  .mcard h3{font-size:19px;margin-top:10px}
+  .mcard h3 .dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--member);margin-right:6px;vertical-align:1px}
+  .mcard .role{font-size:12px;font-weight:700;color:var(--member);margin-top:1px;letter-spacing:.04em}
+  .mcard p{font-size:13px;color:var(--ink2);margin-top:8px}
+
+  /* ---------- 页脚 ---------- */
+  footer{margin:34px 0 0;border-top:1px solid var(--line);padding:18px 0 30px}
+  footer .fin{font-size:13px;color:var(--ink3)}
+  footer .fin b{color:var(--ink2)}
+  footer .canon-note{font-size:12px;margin-top:4px}
+
+  @media (prefers-reduced-motion: reduce){
+    *{animation:none!important;transition:none!important}
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap topbar-in">
+    <svg class="logo" viewBox="0 0 30 30" aria-hidden="true">
+      <rect x="4" y="8" width="22" height="16" rx="4" fill="#6d5ef0" opacity=".9"/>
+      <path d="M4 12l11 7 11-7" stroke="#fff" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect x="7" y="3.5" width="5.5" height="7" rx="2.2" fill="#f0a8c9"/>
+      <rect x="17.5" y="3.5" width="5.5" height="7" rx="2.2" fill="#5b8def"/>
+    </svg>
+    <b>Wonder4ge 小屋</b>
+    <span class="sub">主题跟随系统 · 自动明暗</span>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ 英雄区 + 弹幕 ============ -->
+  <section class="hero" id="hero">
+    <div id="danmaku" aria-hidden="true"></div>
+    <span class="badge">WONDER4GE HOUSE</span>
+    <h1>Wonder4ge <span class="amp">小屋</span></h1>
+    <p class="lede">四位成员住在这里：把鼠标放到立绘上（或用 Tab + Enter 点按），她们会切换表情；点「打招呼」，屋顶会飘过她们的弹幕。</p>
+    <div class="controls">
+      <button type="button" class="btn-wave" id="btn-wave">👋 打招呼</button>
+      <span class="ctrl-note">弹幕台词前端随机 · 纯本地运行</span>
+    </div>
+  </section>
+
+  <!-- ============ 四位成员 ============ -->
+  <section class="block" id="members">
+    <div class="block-head">
+      <h2>四位成员</h2><span class="tag">悬停 / 点按换表情</span>
+    </div>
+    <p class="block-desc">立绘为正典形象，仅做缩放展示，不做任何修改。</p>
+
+    <div class="cards" id="cards">
+      <article class="mcard" tabindex="0" role="button"
+        data-name="yaya" data-color="#f0a8c9" style="--member:#f0a8c9"
+        aria-label="yaya：金发蓝瞳、软萌小猫气质、忙内可爱担当。按 Enter 切换表情并打招呼">
+        <div class="picbox">
+          <img class="front" src="mascot-assets/yaya_2dcute_front.png" alt="yaya 正典立绘" loading="lazy" decoding="async" width="600" height="800">
+          <img class="expr-smile" src="mascot-assets/expr-crops/yaya_smile.png" alt="" loading="lazy" decoding="async" aria-hidden="true" width="307" height="720">
+          <img class="expr-surprised" src="mascot-assets/expr-crops/yaya_surprised.png" alt="" loading="lazy" decoding="async" aria-hidden="true" width="307" height="720">
+          <span class="hint">悬停 / 点按换表情</span>
+        </div>
+        <h3><span class="dot"></span>yaya</h3>
+        <p class="role">MAKNAE · 可爱担当</p>
+        <p>金发蓝瞳，软萌小猫气质，忙内可爱担当。</p>
+      </article>
+
+      <article class="mcard" tabindex="0" role="button"
+        data-name="gaga" data-color="#5b8def" style="--member:#5b8def"
+        aria-label="gaga：蓝发，C 位与 ACE，队长气场。按 Enter 切换表情并打招呼">
+        <div class="picbox">
+          <img class="front" src="mascot-assets/gaga_2dcute_front.png" alt="gaga 正典立绘" loading="lazy" decoding="async" width="600" height="800">
+          <img class="expr-smile" src="mascot-assets/expr-crops/gaga_smile.png" alt="" loading="lazy" decoding="async" aria-hidden="true" width="307" height="720">
+          <img class="expr-surprised" src="mascot-assets/expr-crops/gaga_surprised.png" alt="" loading="lazy" decoding="async" aria-hidden="true" width="307" height="720">
+          <span class="hint">悬停 / 点按换表情</span>
+        </div>
+        <h3><span class="dot"></span>gaga</h3>
+        <p class="role">CENTER · ACE</p>
+        <p>蓝发，站在 C 位的 ACE，自带队长气场。</p>
+      </article>
+
+      <article class="mcard" tabindex="0" role="button"
+        data-name="juju" data-color="#9d7aea" style="--member:#9d7aea"
+        aria-label="juju：站位左三，沉稳可靠的姐姐位。按 Enter 切换表情并打招呼">
+        <div class="picbox">
+          <img class="front" src="mascot-assets/juju_2dcute_front.png" alt="juju 正典立绘" loading="lazy" decoding="async" width="600" height="800">
+          <img class="expr-smile" src="mascot-assets/expr-crops/juju_smile.png" alt="" loading="lazy" decoding="async" aria-hidden="true" width="307" height="720">
+          <img class="expr-surprised" src="mascot-assets/expr-crops/juju_surprised.png" alt="" loading="lazy" decoding="async" aria-hidden="true" width="307" height="720">
+          <span class="hint">悬停 / 点按换表情</span>
+        </div>
+        <h3><span class="dot"></span>juju</h3>
+        <p class="role">沉稳可靠的姐姐位</p>
+        <p>站位左三，沉稳可靠，是让人安心的姐姐。</p>
+      </article>
+
+      <article class="mcard" tabindex="0" role="button"
+        data-name="baibai" data-color="#f0a94b" style="--member:#f0a94b"
+        aria-label="baibai：队长，站位右一。按 Enter 切换表情并打招呼">
+        <div class="picbox">
+          <img class="front" src="mascot-assets/baibai_2dcute_front.png" alt="baibai 正典立绘" loading="lazy" decoding="async" width="600" height="800">
+          <img class="expr-smile" src="mascot-assets/expr-crops/baibai_smile.png" alt="" loading="lazy" decoding="async" aria-hidden="true" width="307" height="720">
+          <img class="expr-surprised" src="mascot-assets/expr-crops/baibai_surprised.png" alt="" loading="lazy" decoding="async" aria-hidden="true" width="307" height="720">
+          <span class="hint">悬停 / 点按换表情</span>
+        </div>
+        <h3><span class="dot"></span>baibai</h3>
+        <p class="role">LEADER · 站位右一</p>
+        <p>Wonder4ge 的队长，站位右一，稳稳掌舵。</p>
+      </article>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap fin">
+    <b>Wonder4ge 小屋</b> · 单文件 · 纯前端 · 零外部依赖 · 明暗主题自动跟随系统 · 本页不收集任何数据<br>
+    <span class="canon-note">© Wonder4ge — 角色形象为正典设定，禁止二次修改。</span>
+  </div>
+</footer>
+
+<script>
+(function(){
+'use strict';
+
+var RM = false;
+try { RM = matchMedia('(prefers-reduced-motion: reduce)').matches; } catch(e){}
+function rand(a,b){ return a + Math.random()*(b-a); }
+
+/* ---------- 预置台词（公开口径） ---------- */
+var LINES = {
+  yaya: [
+    '「呀哈！yaya 来啦～」',
+    '「今天也想被夸夸，可以吗？」',
+    '「喵呜……被发现偷偷打瞌睡了。」',
+    '「忙内也是有实力的哦！」'
+  ],
+  gaga: [
+    '「C 位在此，视线都给我。」——gaga',
+    '「交给我就对了。」——gaga',
+    '「队长气场，两米八。」——gaga',
+    '「下一个舞台，也拿下。」——gaga'
+  ],
+  juju: [
+    '「别急，慢慢来。」——juju',
+    '「有我在，放心。」——juju',
+    '「姐姐帮你们看着呢。」——juju',
+    '「稳一点，再稳一点。」——juju'
+  ],
+  baibai: [
+    '「集合！小屋要开工啦。」——baibai',
+    '「队长先上，大家跟上。」——baibai',
+    '「今天也全员平安，很好。」——baibai',
+    '「站在最右边的人，负责收尾。」——baibai'
+  ]
+};
+var ALL_NAMES = ['yaya','gaga','juju','baibai'];
+
+/* ---------- 弹幕 ---------- */
+var danBox = document.getElementById('danmaku');
+var danCount = 0;
+function pickLine(name){
+  var arr = LINES[name] || [];
+  return arr[Math.floor(Math.random()*arr.length)];
+}
+function spawnDan(text){
+  if(!danBox) return;
+  if(danBox.children.length >= 14) danBox.removeChild(danBox.firstChild);
+  var el = document.createElement('span');
+  el.className = 'dan';
+  el.textContent = text;
+  el.style.top = Math.round(rand(8, 62)) + '%';
+  el.style.fontSize = rand(12, 14.5).toFixed(1) + 'px';
+  danBox.appendChild(el);
+  if(RM){
+    el.style.left = '10px'; el.style.right = '10px';
+    el.style.top = (danCount++ % 5) * 15 + 6 + '%';
+    el.style.whiteSpace = 'normal';
+    setTimeout(function(){ if(el.parentNode) el.parentNode.removeChild(el); }, 4200);
+    return;
+  }
+  var w = danBox.clientWidth || 600;
+  var dist = w + el.offsetWidth + 60;
+  var dur = rand(7000, 10000);
+  var anim = el.animate(
+    [{ transform:'translateX(0)', opacity:.2 },
+     { opacity:1, offset:.06 },
+     { transform:'translateX(-' + dist + 'px)', opacity:1 }],
+    { duration:dur, easing:'linear' });
+  anim.onfinish = function(){ if(el.parentNode) el.parentNode.removeChild(el); };
+  anim.oncancel = anim.onfinish;
+}
+function danBurst(n, name){
+  for(var i=0;i<n;i++){
+    (function(k){
+      setTimeout(function(){
+        var nm = name || ALL_NAMES[Math.floor(Math.random()*ALL_NAMES.length)];
+        spawnDan(pickLine(nm));
+      }, RM ? 0 : k*420);
+    })(i);
+  }
+}
+
+/* ---------- 成员卡交互：悬停=smile，点按=surprised 1.2s 后回落 ---------- */
+var preloaded = false;
+function preloadExpr(){
+  if(preloaded) return;
+  preloaded = true;
+  document.querySelectorAll('.mcard .expr-smile, .mcard .expr-surprised').forEach(function(img){
+    if(!img.complete) { var probe = new Image(); probe.src = img.getAttribute('src'); }
+  });
+}
+var cards = Array.prototype.slice.call(document.querySelectorAll('.mcard'));
+cards.forEach(function(card){
+  var name = card.getAttribute('data-name');
+  var surpriseTimer = null;
+  /* excited = 悬停或键盘聚焦（显示 smile）；surprise = 点按瞬间，显示 surprised 并锁定 1.2s */
+  var hovered = false, focused = false;
+  function applyState(){
+    if(card.classList.contains('surprise')) return; /* surprised 期间锁定 */
+    card.classList.toggle('excited', hovered || focused);
+  }
+  function surprise(){
+    preloadExpr();
+    if(surpriseTimer) clearTimeout(surpriseTimer);
+    card.classList.add('surprise');
+    spawnDan(pickLine(name));
+    surpriseTimer = setTimeout(function(){
+      surpriseTimer = null;
+      card.classList.remove('surprise');
+      applyState(); /* 悬停中回 smile，否则回 front */
+    }, 1200);
+  }
+  card.addEventListener('pointerenter', function(){
+    preloadExpr();
+    hovered = true; applyState();
+  });
+  card.addEventListener('pointerleave', function(){ hovered = false; applyState(); });
+  card.addEventListener('focus', function(){ preloadExpr(); focused = true; applyState(); });
+  card.addEventListener('blur', function(){ focused = false; applyState(); });
+  card.addEventListener('click', surprise);
+  card.addEventListener('keydown', function(e){
+    if(e.key === 'Enter' || e.key === ' '){
+      e.preventDefault();
+      surprise();
+    }
+  });
+});
+
+/* ---------- 打招呼 ---------- */
+document.getElementById('btn-wave').addEventListener('click', function(){
+  danBurst(5);
+  cards.forEach(function(c){ c.classList.remove('excited'); c.classList.remove('surprise'); });
+});
+
+/* ---------- 入场弹幕 ---------- */
+setTimeout(function(){ if(!document.hidden) danBurst(3); }, 600);
+if(!RM){
+  setInterval(function(){
+    if(!document.hidden && danBox.children.length < 6) spawnDan(pickLine(ALL_NAMES[Math.floor(Math.random()*4)]));
+  }, 9500);
+}
+
+})();
+</script>
+</body>
+</html>

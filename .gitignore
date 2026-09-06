@@ -1,0 +1,10 @@
+# OS / 编辑器杂物
+Thumbs.db
+desktop.ini
+.DS_Store
+*.log
+
+# 依赖与构建缓存（本仓库原则上不放）
+node_modules/
+dist/
+__pycache__/
