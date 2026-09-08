@@ -4,7 +4,9 @@ name: deploy-site
 on:
   push:
     branches: [main]
-    paths: ["index.html", "mascot.html"]
+    # og.png も対象に入れる：index.html だけを push すると og:image が 404 を返し、
+    # その 404 が SNS 側にキャッシュされて後から直しても反映されない
+    paths: ["index.html", "mascot.html", "og.png"]
   workflow_dispatch:
 
 permissions:
@@ -26,6 +28,8 @@ jobs:
         run: |
           aws s3 cp index.html s3://onewonder-public-site/index.html --content-type "text/html; charset=utf-8"
           aws s3 cp mascot.html s3://onewonder-public-site/mascot.html --content-type "text/html; charset=utf-8"
+          # OG 画像は内容が変わらないので長めにキャッシュさせる（HTML は既定どおり）
+          aws s3 cp og.png s3://onewonder-public-site/og.png --content-type "image/png" --cache-control "public, max-age=86400"
 
       - name: Invalidate CloudFront
         run: aws cloudfront create-invalidation --distribution-id E2PSKJQMU4ZWTB --paths "/*"
