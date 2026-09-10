@@ -5,15 +5,55 @@
   含 4 张正典立绘 front + 8 张派生表情裁切（expr-crops/）。
   正典纪律：禁止 AI 重绘/改色，只许缩放展示。
 -->
-<html lang="zh-CN">
+<html lang="ja">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Wonder4ge 小屋 · 四位成员</title>
-<meta name="description" content="Wonder4ge 小屋：四位成员 yaya、gaga、juju、baibai 的互动卡片。悬停换表情、打招呼弹幕。单文件、纯前端、零外部依赖。">
+<title>Wonder4ge 小屋 · 4 人のメンバー</title>
+<meta name="description" content="Wonder4ge 小屋：yaya・gaga・juju・baibai の 4 人を紹介するインタラクティブなカード。カーソルを合わせると表情が変わり、挨拶のセリフが流れます。単一ファイル・フロントエンドのみ・外部依存ゼロ。">
+<!-- R10: index.html と同じ 7 言語対応にする。表示言語は同一の localStorage キー
+     （kb_lang）を共有するので、ナレッジハブで選んだ言語がこのページにも引き継がれる。 -->
+<script>
+(function(){
+  var SUP = ['ja','en','zh','ko','de','es','fr'], saved = null;
+  try { saved = localStorage.getItem('kb_lang'); } catch(e){}
+  var lang = SUP.indexOf(saved) >= 0 ? saved : '';
+  if(!lang){
+    var navs = navigator.languages || [navigator.language || 'ja'];
+    for(var i = 0; i < navs.length && !lang; i++){
+      var p = String(navs[i]).toLowerCase().split('-')[0];
+      if(SUP.indexOf(p) >= 0) lang = p;
+    }
+  }
+  window.MS_LANG = lang || 'ja';
+  document.documentElement.lang = window.MS_LANG;
+})();
+</script>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3E%3Crect x='4' y='8' width='22' height='16' rx='4' fill='%236d5ef0'/%3E%3Cpath d='M4 12l11 7 11-7' stroke='%23fff' stroke-width='2.2' fill='none'/%3E%3C/svg%3E">
 <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f4f6fb">
 <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0c0f16">
+<!-- R20-B4：共有時のメタ。実測（R20 検査）で index.html は og 16 件 + twitter 2 件を
+     持つのに、このページは canonical / og / twitter / robots がいずれも 0 件だった。
+     README でも 2 つ目の正式 URL として案内しているページなので、Slack / X / LINE に
+     貼っても題名も説明も画像も出ない状態は実害がある。
+     og:image は当面ハブ共通の /og.png を使う（1200x630 で検証済み）。
+     このページ専用の画像を作るなら差し替える。CDN のマスコット立ち絵は
+     1 枚 1.8〜2.2MB で縦横比も合わないため、そのままでは使えない。 -->
+<link rel="canonical" href="https://hub.onewonder.co.jp/mascot.html">
+<meta name="robots" content="index,follow">
+<meta property="og:title" content="Wonder4ge 小屋 — OneWonder ナレッジハブ">
+<meta property="og:description" content="Wonder4ge 小屋：yaya・gaga・juju・baibai の 4 人を紹介するインタラクティブなカード。立ち絵にカーソルを合わせると表情が変わります。">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://hub.onewonder.co.jp/mascot.html">
+<meta property="og:site_name" content="OneWonder ナレッジハブ">
+<meta property="og:locale" content="ja_JP">
+<meta property="og:image" content="https://hub.onewonder.co.jp/og.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="OneWonder ナレッジハブ — AI 業界の公開情報を、検証可能な結論に変える">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://hub.onewonder.co.jp/og.png">
 <style>
   :root{
     --bg:#f4f6fb; --card:#ffffff; --ink:#20263a; --ink2:#5d6880; --ink3:#8a93ab;
@@ -58,6 +98,61 @@
   .topbar b{font-size:15px;letter-spacing:.02em}
   .topbar .sub{font-size:12px;color:var(--ink3);margin-left:auto;white-space:nowrap}
   @media (max-width:480px){ .topbar .sub{display:none} }
+  /* R1: ナレッジハブへ戻る導線。index.html からこのページへのリンクを追加したので、
+     戻り側も用意する（従来はブラウザの戻るしか手段が無かった）。 */
+  a.back-hub{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;color:var(--ink2);
+    background:var(--chip);border:1px solid var(--line);border-radius:999px;padding:4px 12px;
+    white-space:nowrap;transition:color .15s,border-color .15s}
+  a.back-hub:hover{color:var(--accent);border-color:var(--accent)}
+  .topbar .sub{margin-left:12px}
+  .topbar-in .spacer{margin-left:auto}
+  /* R29#13：従来は狭幅でラベルを消しており、375px でリンク幅 34px＝
+     「←」だけになっていた（実測）。何のリンクか分からないので、
+     短いラベル（data-i18n="back_short"）に差し替える。 */
+  a.back-hub span.back-short{display:none}
+  @media (max-width:560px){
+    a.back-hub span.back-label{display:none}
+    a.back-hub span.back-short{display:inline}
+  }
+
+  /* ---------- R10: 言語ドロップダウン（index.html と同じ作法、色は本ページのトークン） ---------- */
+  #ms-lang{position:relative;flex:0 0 auto}
+  #ms-lang-btn{display:flex;align-items:center;gap:6px;height:30px;
+    background:var(--chip);border:1px solid var(--line);border-radius:999px;
+    color:var(--ink2);font-size:12.5px;font-weight:600;padding:0 10px 0 9px;
+    white-space:nowrap;transition:color .15s,border-color .15s}
+  #ms-lang-btn:hover{color:var(--accent);border-color:var(--accent)}
+  #ms-lang-btn[aria-expanded="true"]{color:var(--accent);border-color:var(--accent)}
+  #ms-lang-btn > svg{width:15px;height:15px;flex:none;opacity:.75}
+  #ms-lang-btn .caret{width:13px;height:13px;opacity:.6;transition:transform .18s}
+  #ms-lang-btn[aria-expanded="true"] .caret{transform:rotate(180deg)}
+  #ms-lang-list{position:absolute;right:0;top:calc(100% + 6px);z-index:40;
+    min-width:172px;margin:0;padding:4px;list-style:none;
+    background:var(--card);border:1px solid var(--line);border-radius:14px;
+    box-shadow:var(--shadow)}
+  #ms-lang-list [role="option"]{display:flex;align-items:center;gap:8px;
+    padding:8px 10px;border-radius:9px;font-size:13px;color:var(--ink);
+    cursor:pointer;white-space:nowrap;line-height:1.4}
+  #ms-lang-list [role="option"]:hover{background:var(--chip)}
+  #ms-lang-list [role="option"]:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+  #ms-lang-list [role="option"].on{color:var(--accent);font-weight:700;background:var(--chip)}
+  #ms-lang-list .lang-check{width:14px;height:14px;flex:none;display:flex;
+    align-items:center;justify-content:center;opacity:0}
+  #ms-lang-list .lang-check svg{width:14px;height:14px}
+  #ms-lang-list [role="option"].on .lang-check{opacity:1}
+  @media (max-width:560px){
+    #ms-lang-btn span:not(.caret){max-width:7ch;overflow:hidden;text-overflow:ellipsis}
+  }
+  /* R10: 375px では上のバーが logo / spacer / 戻る / 言語 / sub の 5 行に折り返して
+     縦を食っていた。テーマ追従の注記は情報量が小さいので隠し、
+     残りを 1 行に収める。 */
+  @media (max-width:560px){
+    .topbar .sub{display:none}
+    .topbar-in{gap:8px;padding:8px 0;flex-wrap:nowrap}
+    .topbar b{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+    .logo{width:26px;height:26px}
+    a.back-hub{padding:4px 9px}
+  }
 
   /* ---------- 英雄区 + 弹幕层 ---------- */
   .hero{
@@ -148,6 +243,43 @@
   @media (prefers-reduced-motion: reduce){
     *{animation:none!important;transition:none!important}
   }
+
+  /* ==== R19：印刷（用紙 / PDF 書き出し）====
+     index.html と同じ問題がこのページにもある：
+       ・.topbar が position:sticky（69 行目）なので 2 ページ目以降も居座る
+       ・配色が prefers-color-scheme に追従するため、端末がダークだと
+         白紙に明色の文字（--ink:#e9ecf6）が乗って読めない
+       ・弾幕（#danmaku）と「挨拶する」は画面専用の演出
+     立ち絵そのものは資料として意味があるので残す。 */
+  @page{ margin:14mm }
+  @media print{
+    /* prefers-color-scheme:dark の :root 上書き（46 行目）を打ち消す。
+       この宣言の方が後ろにあるので同一詳細度でも勝つ。 */
+    :root{
+      --bg:#f4f6fb; --card:#ffffff; --ink:#20263a; --ink2:#5d6880; --ink3:#8a93ab;
+      --line:#e2e7f2; --chip:#eef1f9; --chip-ink:#4a5570;
+      --accent:#6d5ef0; --accent-ink:#ffffff;
+      --dan-bg:rgba(255,255,255,.86); --dan-ink:#3a4360; --dan-line:#dfe4f0;
+      --hero-bg:none;
+      --topbar:transparent;
+      --shadow:none;
+      color-scheme:light;
+    }
+    html, body{ background:#fff !important; color:var(--ink);
+      -webkit-print-color-adjust:exact; print-color-adjust:exact }
+    body{ font-size:10.5pt }
+    /* 画面専用：弾幕・挨拶ボタン・言語切替・戻り導線 */
+    #danmaku, .controls, #ms-lang, #back-hub, .topbar .sub{ display:none !important }
+    .topbar{ position:static !important; border-bottom:1px solid var(--line);
+      backdrop-filter:none !important; -webkit-backdrop-filter:none !important }
+    .hero{ background:none !important }
+    /* 4 列は用紙では細すぎる。2 列にしてカードが割れないようにする。 */
+    .cards{ grid-template-columns:1fr 1fr; gap:12px }
+    .mcard{ break-inside:avoid; page-break-inside:avoid; box-shadow:none !important }
+    .block-head h2, h1{ break-after:avoid; page-break-after:avoid }
+    a{ color:inherit; text-decoration:underline }
+    img{ max-width:100% }
+  }
 </style>
 </head>
 <body>
@@ -160,87 +292,298 @@
       <rect x="7" y="3.5" width="5.5" height="7" rx="2.2" fill="#f0a8c9"/>
       <rect x="17.5" y="3.5" width="5.5" height="7" rx="2.2" fill="#5b8def"/>
     </svg>
-    <b>Wonder4ge 小屋</b>
-    <span class="sub">主题跟随系统 · 自动明暗</span>
+    <b data-i18n="brand">Wonder4ge 小屋</b>
+    <span class="spacer"></span>
+    <!-- R1: ナレッジハブへ戻る。R10 で 7 言語対応（localStorage 'kb_lang' を index と共有）。 -->
+    <!-- R22（重要）：R20-B5 で "./" にしたのは誤りだった。
+         "./" は file:// でファイルを直接開いたときディレクトリ自身を指すため、
+         「← ナレッジハブへ戻る」を押すとフォルダ一覧が出てしまう（実測）。
+         URL の重複（/ と /index.html）を避けたかったが、それは canonical で
+         担保されている話で、リンクが動かないことの方が重大。
+         file:// / ルート配信 / サブパス配信の 3 つすべてで成立するのは
+         "index.html" だけなので戻す。 -->
+    <a class="back-hub" id="back-hub" href="index.html">←&nbsp;<span class="back-label" data-i18n="back">ナレッジハブへ戻る</span><span class="back-short" data-i18n="back_short">ハブ</span></a>
+    <!-- R10: index.html と同じ作法の言語ドロップダウン -->
+    <div id="ms-lang">
+      <button type="button" id="ms-lang-btn" aria-haspopup="listbox" aria-expanded="false"
+        data-i18n-aria="lang_aria" aria-label="表示言語">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3.6 9h16.8M3.6 15h16.8"/><path d="M12 3a15 15 0 0 1 0 18 15 15 0 0 1 0-18z"/></svg>
+        <span id="ms-lang-label">日本語</span>
+        <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+      </button>
+      <ul id="ms-lang-list" role="listbox" data-i18n-aria="lang_aria" aria-label="表示言語" hidden></ul>
+    </div>
+    <span class="sub" data-i18n="sub">テーマは端末設定に追従（自動で明暗が切り替わります）</span>
   </div>
 </header>
+<script>
+/* ============================================================================
+   R10: mascot.html を index.html と同じ 7 言語対応にする。
+
+   方針は index.html と同じ：
+     ・UI の器（見出し・ボタン・説明・フッター）は全訳する
+     ・キャラクターのセリフ（弾幕）は「声」そのものなので、
+       翻訳しても口調が壊れないよう短く言い切る形で各言語を書き起こした
+       （原文の直訳ではなく、その言語で自然に聞こえる言い方に寄せている）
+     ・表示言語は index.html と同じ localStorage キー（kb_lang）を共有する
+   ============================================================================ */
+window.MS_I18N = {
+ja:{
+ doc_title:'Wonder4ge 小屋 · 4 人のメンバー',
+ brand:'Wonder4ge 小屋', sub:'テーマは端末設定に追従（自動で明暗が切り替わります）',
+ back:'ナレッジハブへ戻る', back_short:'ハブ', lang_aria:'表示言語',
+ badge:'WONDER4GE HOUSE', h1_a:'Wonder4ge', h1_b:'小屋',
+ lede:'4 人がここに住んでいます。立ち絵にカーソルを合わせる（または Tab + Enter で選ぶ）と表情が変わります。「挨拶する」を押すと、屋根の上に 4 人のセリフが流れます。',
+ wave:'挨拶する', ctrl_note:'セリフはブラウザ側でランダムに選ばれます・通信は行いません',
+ members_h:'4 人のメンバー', members_tag:'カーソルを合わせる / 押すと表情が変わる',
+ members_desc:'立ち絵は正典設定の画像で、拡大縮小のみ。加工は一切していません。',
+ hint:'カーソルを合わせる / 押す',
+ yaya_role:'MAKNAE · かわいい担当', yaya_desc:'金髪と青い瞳。ふわっとした子猫のような雰囲気の、末っ子かわいい担当。',
+ gaga_role:'CENTER · ACE', gaga_desc:'青い髪。センターに立つ ACE で、リーダーの風格をまとっています。',
+ juju_role:'落ち着いた姉さん役', juju_desc:'左から 3 番目。落ち着いて頼れる、安心感のある姉さん役。',
+ baibai_role:'LEADER · 右端', baibai_desc:'Wonder4ge のリーダー。右端に立ち、しっかり舵を取ります。',
+ aria_card:'{name}：{desc} Enter を押すと表情が変わり、挨拶します',
+ foot:'Wonder4ge 小屋 · 単一ファイル · フロントエンドのみ · 外部依存ゼロ · 明暗は端末設定に追従 · このページはデータを一切収集しません',
+ canon:'© Wonder4ge — キャラクターは正典設定です。改変を禁じます。',
+ lines:{
+  yaya:['「やっほー！ yaya だよ〜」','「今日も褒めてほしいな、だめ？」','「にゃあ……居眠りしてたの、見つかっちゃった」','「末っ子だって、ちゃんとやれるんだよ！」'],
+  gaga:['「センターはここ。視線は全部こっちに」','「任せておけば大丈夫」','「リーダーの風格、身長 2 メートル 8」','「次のステージも、取りにいく」'],
+  juju:['「あせらないで、ゆっくりね」','「わたしがいるから、安心して」','「お姉さんが見ていてあげる」','「もう少し落ち着いて、あと少し」'],
+  baibai:['「集合！ 小屋、開店するよ」','「リーダーが先。みんなついてきて」','「今日も全員そろって無事、いいね」','「右端の人が、締めを担当します」']
+ }},
+en:{
+ doc_title:'Wonder4ge House · The four members',
+ brand:'Wonder4ge House', sub:'Theme follows your device (light / dark switches automatically)',
+ back:'Back to the Knowledge Hub', back_short:'Hub', lang_aria:'Display language',
+ badge:'WONDER4GE HOUSE', h1_a:'Wonder4ge', h1_b:'House',
+ lede:'Four members live here. Hover over a character (or select it with Tab + Enter) and her expression changes. Press “Say hello” and their lines drift across the roof.',
+ wave:'Say hello', ctrl_note:'Lines are picked at random in your browser · nothing is sent anywhere',
+ members_h:'The four members', members_tag:'Hover or press to change the expression',
+ members_desc:'The artwork is the canonical design, shown at scale only. Nothing has been altered.',
+ hint:'Hover or press',
+ yaya_role:'MAKNAE · the cute one', yaya_desc:'Blonde hair, blue eyes. A soft, kitten-like presence — the youngest and the cute one.',
+ gaga_role:'CENTER · ACE', gaga_desc:'Blue hair. The ACE who stands at centre, carrying a leader’s presence.',
+ juju_role:'The steady older-sister role', juju_desc:'Third from the left. Calm and dependable — the one who puts everyone at ease.',
+ baibai_role:'LEADER · far right', baibai_desc:'The leader of Wonder4ge. Stands at the far right and keeps a steady hand on the wheel.',
+ aria_card:'{name}: {desc} Press Enter to change her expression and say hello',
+ foot:'Wonder4ge House · single file · front-end only · no external dependencies · light/dark follows your device · this page collects no data',
+ canon:'© Wonder4ge — the characters are canonical designs. Modification is not permitted.',
+ lines:{
+  yaya:['“Hiya! yaya’s here~”','“I’d like a compliment today too — may I?”','“Mrow… you caught me dozing off.”','“The youngest can pull her weight too!”'],
+  gaga:['“Centre is right here. Eyes on me.”','“Leave it to me and it’s handled.”','“Leader’s aura — about seven feet of it.”','“The next stage is ours as well.”'],
+  juju:['“No rush. Take your time.”','“I’m here, so relax.”','“Your big sister is keeping watch.”','“Steady now. A little steadier.”'],
+  baibai:['“Gather up! The house is opening.”','“Leader goes first — everyone follow.”','“All four of us safe again today. Good.”','“The one on the far right handles the finish.”']
+ }},
+zh:{
+ doc_title:'Wonder4ge 小屋 · 四位成员',
+ brand:'Wonder4ge 小屋', sub:'主题跟随系统 · 自动明暗',
+ back:'返回知识中枢', back_short:'中枢', lang_aria:'显示语言',
+ badge:'WONDER4GE HOUSE', h1_a:'Wonder4ge', h1_b:'小屋',
+ lede:'四位成员住在这里：把鼠标放到立绘上（或用 Tab + Enter 点按），她们会切换表情；点「打招呼」，屋顶会飘过她们的弹幕。',
+ wave:'打招呼', ctrl_note:'弹幕台词前端随机 · 纯本地运行',
+ members_h:'四位成员', members_tag:'悬停 / 点按换表情',
+ members_desc:'立绘为正典形象，仅做缩放展示，不做任何修改。',
+ hint:'悬停 / 点按换表情',
+ yaya_role:'MAKNAE · 可爱担当', yaya_desc:'金发蓝瞳，软萌小猫气质，忙内可爱担当。',
+ gaga_role:'CENTER · ACE', gaga_desc:'蓝发，站在 C 位的 ACE，自带队长气场。',
+ juju_role:'沉稳可靠的姐姐位', juju_desc:'站位左三，沉稳可靠，是让人安心的姐姐。',
+ baibai_role:'LEADER · 站位右一', baibai_desc:'Wonder4ge 的队长，站位右一，稳稳掌舵。',
+ aria_card:'{name}：{desc} 按 Enter 切换表情并打招呼',
+ foot:'Wonder4ge 小屋 · 单文件 · 纯前端 · 零外部依赖 · 明暗主题自动跟随系统 · 本页不收集任何数据',
+ canon:'© Wonder4ge — 角色形象为正典设定，禁止二次修改。',
+ lines:{
+  yaya:['「呀哈！yaya 来啦～」','「今天也想被夸夸，可以吗？」','「喵呜……被发现偷偷打瞌睡了。」','「忙内也是有实力的哦！」'],
+  gaga:['「C 位在此，视线都给我。」','「交给我就对了。」','「队长气场，两米八。」','「下一个舞台，也拿下。」'],
+  juju:['「别急，慢慢来。」','「有我在，放心。」','「姐姐帮你们看着呢。」','「稳一点，再稳一点。」'],
+  baibai:['「集合！小屋要开工啦。」','「队长先上，大家跟上。」','「今天也全员平安，很好。」','「站在最右边的人，负责收尾。」']
+ }},
+ko:{
+ doc_title:'Wonder4ge 하우스 · 네 명의 멤버',
+ brand:'Wonder4ge 하우스', sub:'테마는 기기 설정에 따름 (밝게 / 어둡게 자동 전환)',
+ back:'널리지 허브로 돌아가기', back_short:'허브', lang_aria:'표시 언어',
+ badge:'WONDER4GE HOUSE', h1_a:'Wonder4ge', h1_b:'하우스',
+ lede:'네 명이 여기 살고 있습니다. 일러스트에 커서를 올리면 (또는 Tab + Enter 로 선택하면) 표정이 바뀝니다. 「인사하기」를 누르면 지붕 위로 네 사람의 대사가 흘러갑니다.',
+ wave:'인사하기', ctrl_note:'대사는 브라우저에서 무작위로 선택됩니다 · 통신은 하지 않습니다',
+ members_h:'네 명의 멤버', members_tag:'커서를 올리거나 누르면 표정이 바뀝니다',
+ members_desc:'일러스트는 정전 설정 이미지이며 확대·축소만 했습니다. 가공은 전혀 하지 않았습니다.',
+ hint:'커서를 올리거나 누르기',
+ yaya_role:'MAKNAE · 귀여움 담당', yaya_desc:'금발과 파란 눈. 폭신한 새끼 고양이 같은 분위기의 막내 귀여움 담당.',
+ gaga_role:'CENTER · ACE', gaga_desc:'파란 머리. 센터에 서는 ACE 로, 리더의 아우라를 지녔습니다.',
+ juju_role:'차분한 언니 포지션', juju_desc:'왼쪽에서 세 번째. 차분하고 믿음직한, 안심이 되는 언니 포지션.',
+ baibai_role:'LEADER · 맨 오른쪽', baibai_desc:'Wonder4ge 의 리더. 맨 오른쪽에 서서 든든하게 키를 잡습니다.',
+ aria_card:'{name} : {desc} Enter 를 누르면 표정이 바뀌고 인사합니다',
+ foot:'Wonder4ge 하우스 · 단일 파일 · 프런트엔드 전용 · 외부 의존성 없음 · 밝게/어둡게는 기기 설정에 따름 · 이 페이지는 어떤 데이터도 수집하지 않습니다',
+ canon:'© Wonder4ge — 캐릭터는 정전 설정입니다. 개변을 금합니다.',
+ lines:{
+  yaya:['「야호! yaya 왔어~」','「오늘도 칭찬받고 싶은데, 안 될까?」','「냐앙…… 졸고 있던 거 들켰다.」','「막내도 제대로 할 수 있거든!」'],
+  gaga:['「센터는 여기. 시선은 전부 이쪽으로.」','「맡겨두면 괜찮아.」','「리더의 아우라, 키 2 미터 8.」','「다음 무대도 가져간다.」'],
+  juju:['「서두르지 말고, 천천히.」','「내가 있으니까 안심해.」','「언니가 봐주고 있을게.」','「조금 더 침착하게, 조금만 더.」'],
+  baibai:['「집합! 하우스, 문 연다.」','「리더가 먼저. 모두 따라와.」','「오늘도 전원 무사, 좋아.」','「맨 오른쪽 사람이 마무리를 담당합니다.」']
+ }},
+de:{
+ doc_title:'Wonder4ge House · Die vier Mitglieder',
+ brand:'Wonder4ge House', sub:'Das Design folgt Ihrem Gerät (hell / dunkel schaltet automatisch)',
+ back:'Zurück zum Knowledge Hub', back_short:'Hub', lang_aria:'Anzeigesprache',
+ badge:'WONDER4GE HOUSE', h1_a:'Wonder4ge', h1_b:'House',
+ lede:'Vier Mitglieder wohnen hier. Fahren Sie über eine Figur (oder wählen Sie sie mit Tab + Enter) und ihr Ausdruck ändert sich. Ein Klick auf „Hallo sagen“ lässt ihre Sprüche über das Dach ziehen.',
+ wave:'Hallo sagen', ctrl_note:'Die Sprüche werden im Browser zufällig gewählt · es wird nichts übertragen',
+ members_h:'Die vier Mitglieder', members_tag:'Überfahren oder drücken ändert den Ausdruck',
+ members_desc:'Die Illustrationen sind die kanonischen Entwürfe und werden nur skaliert gezeigt. Es wurde nichts verändert.',
+ hint:'Überfahren oder drücken',
+ yaya_role:'MAKNAE · die Süße', yaya_desc:'Blondes Haar, blaue Augen. Eine weiche, kätzchenhafte Ausstrahlung — die Jüngste und die Süße.',
+ gaga_role:'CENTER · ACE', gaga_desc:'Blaues Haar. Die ACE in der Mitte, mit der Präsenz einer Anführerin.',
+ juju_role:'Die ruhige große Schwester', juju_desc:'Dritte von links. Ruhig und verlässlich — die, bei der sich alle sicher fühlen.',
+ baibai_role:'LEADER · ganz rechts', baibai_desc:'Die Anführerin von Wonder4ge. Sie steht ganz rechts und hält das Ruder fest in der Hand.',
+ aria_card:'{name}: {desc} Enter drücken, um den Ausdruck zu wechseln und zu grüßen',
+ foot:'Wonder4ge House · eine Datei · nur Frontend · keine externen Abhängigkeiten · hell/dunkel folgt dem Gerät · diese Seite erhebt keine Daten',
+ canon:'© Wonder4ge — die Figuren sind kanonische Entwürfe. Änderungen sind nicht gestattet.',
+ lines:{
+  yaya:['„Hallöchen! yaya ist da~“','„Ein Lob wäre heute auch schön — darf ich?“','„Miau… beim Nickerchen erwischt.“','„Die Jüngste kann auch was!“'],
+  gaga:['„Die Mitte ist hier. Alle Blicke her.“','„Überlass es mir, dann passt es.“','„Anführerinnen-Aura, gut zwei Meter acht.“','„Die nächste Bühne holen wir uns auch.“'],
+  juju:['„Keine Eile. Lass dir Zeit.“','„Ich bin da, also ganz ruhig.“','„Die große Schwester passt auf.“','„Ruhig bleiben. Noch ein bisschen ruhiger.“'],
+  baibai:['„Antreten! Das Haus öffnet.“','„Die Anführerin zuerst — alle folgen.“','„Auch heute alle vier gesund. Gut so.“','„Die ganz rechts macht den Abschluss.“']
+ }},
+es:{
+ doc_title:'Wonder4ge House · Las cuatro integrantes',
+ brand:'Wonder4ge House', sub:'El tema sigue tu dispositivo (claro / oscuro cambia automáticamente)',
+ back:'Volver al Knowledge Hub', back_short:'Hub', lang_aria:'Idioma de la interfaz',
+ badge:'WONDER4GE HOUSE', h1_a:'Wonder4ge', h1_b:'House',
+ lede:'Aquí viven cuatro integrantes. Pasa el cursor sobre una (o selecciónala con Tab + Enter) y cambiará su expresión. Pulsa «Saludar» y sus frases cruzarán el tejado.',
+ wave:'Saludar', ctrl_note:'Las frases se eligen al azar en tu navegador · no se envía nada',
+ members_h:'Las cuatro integrantes', members_tag:'Pasa el cursor o pulsa para cambiar la expresión',
+ members_desc:'Las ilustraciones son el diseño canónico y solo se muestran escaladas. No se ha modificado nada.',
+ hint:'Pasa el cursor o pulsa',
+ yaya_role:'MAKNAE · la adorable', yaya_desc:'Pelo rubio y ojos azules. Un aire suave, de gatita: la más pequeña y la adorable del grupo.',
+ gaga_role:'CENTER · ACE', gaga_desc:'Pelo azul. La ACE que se coloca en el centro, con presencia de líder.',
+ juju_role:'La hermana mayor serena', juju_desc:'Tercera por la izquierda. Serena y de fiar: la que hace que todas estén tranquilas.',
+ baibai_role:'LEADER · extremo derecho', baibai_desc:'La líder de Wonder4ge. Se coloca en el extremo derecho y lleva el timón con firmeza.',
+ aria_card:'{name}: {desc} Pulsa Enter para cambiar su expresión y saludar',
+ foot:'Wonder4ge House · un solo archivo · solo front-end · sin dependencias externas · claro/oscuro sigue tu dispositivo · esta página no recoge ningún dato',
+ canon:'© Wonder4ge — los personajes son diseños canónicos. No se permite modificarlos.',
+ lines:{
+  yaya:['«¡Holaaa! Ya llegó yaya~»','«Hoy también me gustaría que me halaguen, ¿puede ser?»','«Miau… me han pillado echando una cabezada.»','«¡La más pequeña también sabe hacerlo!»'],
+  gaga:['«El centro está aquí. Todas las miradas para mí.»','«Déjamelo a mí y listo.»','«Presencia de líder: dos metros ocho.»','«El próximo escenario también es nuestro.»'],
+  juju:['«Sin prisa. Con calma.»','«Estoy aquí, así que tranquila.»','«Tu hermana mayor está vigilando.»','«Con calma. Un poco más de calma.»'],
+  baibai:['«¡A formar! La casa abre.»','«La líder va primero: todas detrás.»','«Hoy también las cuatro bien. Perfecto.»','«La del extremo derecho se encarga del cierre.»']
+ }},
+fr:{
+ doc_title:'Wonder4ge House · Les quatre membres',
+ brand:'Wonder4ge House', sub:'Le thème suit votre appareil (clair / sombre bascule automatiquement)',
+ back:'Retour au Knowledge Hub', back_short:'Hub', lang_aria:'Langue d’affichage',
+ badge:'WONDER4GE HOUSE', h1_a:'Wonder4ge', h1_b:'House',
+ lede:'Quatre membres vivent ici. Survolez une figure (ou sélectionnez-la avec Tab + Entrée) et son expression change. Appuyez sur « Dire bonjour » et leurs répliques traversent le toit.',
+ wave:'Dire bonjour', ctrl_note:'Les répliques sont tirées au hasard dans votre navigateur · rien n’est envoyé',
+ members_h:'Les quatre membres', members_tag:'Survolez ou appuyez pour changer l’expression',
+ members_desc:'Les illustrations sont le design canonique, affiché uniquement à l’échelle. Rien n’a été modifié.',
+ hint:'Survolez ou appuyez',
+ yaya_role:'MAKNAE · la mignonne', yaya_desc:'Cheveux blonds, yeux bleus. Une présence douce, de chaton : la plus jeune et la mignonne du groupe.',
+ gaga_role:'CENTER · ACE', gaga_desc:'Cheveux bleus. L’ACE qui se place au centre, avec une présence de leader.',
+ juju_role:'La grande sœur posée', juju_desc:'Troisième depuis la gauche. Posée et fiable : celle qui met tout le monde à l’aise.',
+ baibai_role:'LEADER · tout à droite', baibai_desc:'La leader de Wonder4ge. Elle se tient tout à droite et tient la barre d’une main sûre.',
+ aria_card:'{name} : {desc} Appuyez sur Entrée pour changer son expression et saluer',
+ foot:'Wonder4ge House · un seul fichier · front-end uniquement · aucune dépendance externe · clair/sombre suit votre appareil · cette page ne collecte aucune donnée',
+ canon:'© Wonder4ge — les personnages sont des designs canoniques. Toute modification est interdite.',
+ lines:{
+  yaya:['« Coucou ! yaya est là ~ »','« J’aimerais bien un compliment aujourd’hui aussi, c’est possible ? »','« Miaou… on m’a surprise à somnoler. »','« La plus jeune sait faire, elle aussi ! »'],
+  gaga:['« Le centre, c’est ici. Tous les regards sur moi. »','« Confie-le moi et c’est réglé. »','« Aura de leader : deux mètres huit. »','« La prochaine scène sera pour nous aussi. »'],
+  juju:['« Pas de précipitation. Prends ton temps. »','« Je suis là, sois tranquille. »','« La grande sœur veille sur vous. »','« Du calme. Encore un peu de calme. »'],
+  baibai:['« Rassemblement ! La maison ouvre. »','« La leader d’abord, tout le monde derrière. »','« Toutes les quatre en forme aujourd’hui encore. Parfait. »','« Celle de droite s’occupe de la conclusion. »']
+ }}};
+
+window.MS_LANG = window.MS_LANG || 'ja';
+/* MT: 翻訳取得（index.html の KT と同じ挙動）。ja をフォールバックにする。 */
+window.MT = function(key, vars){
+  var d = window.MS_I18N[window.MS_LANG] || window.MS_I18N.ja;
+  var s = d[key];
+  if(s === undefined) s = window.MS_I18N.ja[key];
+  if(s === undefined) return key;
+  if(vars) s = String(s).replace(/\{(\w+)\}/g, function(m,k){ return vars[k] !== undefined ? String(vars[k]) : m; });
+  return s;
+};
+window.msApplyI18N = function(){
+  document.querySelectorAll('[data-i18n]').forEach(function(el){ el.textContent = window.MT(el.getAttribute('data-i18n')); });
+  document.querySelectorAll('[data-i18n-aria]').forEach(function(el){ el.setAttribute('aria-label', window.MT(el.getAttribute('data-i18n-aria'))); });
+  document.title = window.MT('doc_title');
+  /* メンバーカードの aria-label は名前と説明を差し込んで組む */
+  document.querySelectorAll('.mcard[data-name]').forEach(function(c){
+    var n = c.dataset.name;
+    c.setAttribute('aria-label', window.MT('aria_card', {name:n, desc:window.MT(n+'_desc')}));
+  });
+};
+</script>
 
 <main class="wrap">
 
   <!-- ============ 英雄区 + 弹幕 ============ -->
   <section class="hero" id="hero">
     <div id="danmaku" aria-hidden="true"></div>
-    <span class="badge">WONDER4GE HOUSE</span>
-    <h1>Wonder4ge <span class="amp">小屋</span></h1>
-    <p class="lede">四位成员住在这里：把鼠标放到立绘上（或用 Tab + Enter 点按），她们会切换表情；点「打招呼」，屋顶会飘过她们的弹幕。</p>
+    <span class="badge" data-i18n="badge">WONDER4GE HOUSE</span>
+    <h1><span data-i18n="h1_a">Wonder4ge</span> <span class="amp" data-i18n="h1_b">小屋</span></h1>
+    <p class="lede" data-i18n="lede">4 人がここに住んでいます。立ち絵にカーソルを合わせる（または Tab + Enter で選ぶ）と表情が変わります。「挨拶する」を押すと、屋根の上に 4 人のセリフが流れます。</p>
     <div class="controls">
-      <button type="button" class="btn-wave" id="btn-wave">👋 打招呼</button>
-      <span class="ctrl-note">弹幕台词前端随机 · 纯本地运行</span>
+      <button type="button" class="btn-wave" id="btn-wave"><span aria-hidden="true">👋</span> <span data-i18n="wave">挨拶する</span></button>
+      <span class="ctrl-note" data-i18n="ctrl_note">セリフはブラウザ側でランダムに選ばれます・通信は行いません</span>
     </div>
   </section>
 
   <!-- ============ 四位成员 ============ -->
   <section class="block" id="members">
     <div class="block-head">
-      <h2>四位成员</h2><span class="tag">悬停 / 点按换表情</span>
+      <h2 data-i18n="members_h">4 人のメンバー</h2><span class="tag" data-i18n="members_tag">カーソルを合わせる / 押すと表情が変わる</span>
     </div>
-    <p class="block-desc">立绘为正典形象，仅做缩放展示，不做任何修改。</p>
+    <p class="block-desc" data-i18n="members_desc">立ち絵は正典設定の画像で、拡大縮小のみ。加工は一切していません。</p>
 
     <div class="cards" id="cards">
       <article class="mcard" tabindex="0" role="button"
-        data-name="yaya" data-color="#f0a8c9" style="--member:#f0a8c9"
-        aria-label="yaya：金发蓝瞳、软萌小猫气质、忙内可爱担当。按 Enter 切换表情并打招呼">
+        data-name="yaya" data-color="#f0a8c9" style="--member:#f0a8c9">
         <div class="picbox">
-          <img class="front" src="https://cdn.onewonder.co.jp/media/mascot/yaya_2dcute_front.png" alt="yaya 正典立绘" loading="lazy" decoding="async" width="600" height="800">
+          <img class="front" src="https://cdn.onewonder.co.jp/media/mascot/yaya_2dcute_front.png" alt="yaya" loading="lazy" decoding="async" width="600" height="800">
           <img class="expr-smile" src="https://cdn.onewonder.co.jp/media/mascot/expr-crops/yaya_smile.png" alt="" loading="lazy" decoding="async" aria-hidden="true" width="307" height="720">
           <img class="expr-surprised" src="https://cdn.onewonder.co.jp/media/mascot/expr-crops/yaya_surprised.png" alt="" loading="lazy" decoding="async" aria-hidden="true" width="307" height="720">
-          <span class="hint">悬停 / 点按换表情</span>
+          <span class="hint" data-i18n="hint">カーソルを合わせる / 押す</span>
         </div>
         <h3><span class="dot"></span>yaya</h3>
-        <p class="role">MAKNAE · 可爱担当</p>
-        <p>金发蓝瞳，软萌小猫气质，忙内可爱担当。</p>
+        <p class="role" data-i18n="yaya_role">MAKNAE · かわいい担当</p>
+        <p data-i18n="yaya_desc">金髪と青い瞳。ふわっとした子猫のような雰囲気の、末っ子かわいい担当。</p>
       </article>
 
       <article class="mcard" tabindex="0" role="button"
-        data-name="gaga" data-color="#5b8def" style="--member:#5b8def"
-        aria-label="gaga：蓝发，C 位与 ACE，队长气场。按 Enter 切换表情并打招呼">
+        data-name="gaga" data-color="#5b8def" style="--member:#5b8def">
         <div class="picbox">
-          <img class="front" src="https://cdn.onewonder.co.jp/media/mascot/gaga_2dcute_front.png" alt="gaga 正典立绘" loading="lazy" decoding="async" width="600" height="800">
+          <img class="front" src="https://cdn.onewonder.co.jp/media/mascot/gaga_2dcute_front.png" alt="gaga" loading="lazy" decoding="async" width="600" height="800">
           <img class="expr-smile" src="https://cdn.onewonder.co.jp/media/mascot/expr-crops/gaga_smile.png" alt="" loading="lazy" decoding="async" aria-hidden="true" width="307" height="720">
           <img class="expr-surprised" src="https://cdn.onewonder.co.jp/media/mascot/expr-crops/gaga_surprised.png" alt="" loading="lazy" decoding="async" aria-hidden="true" width="307" height="720">
-          <span class="hint">悬停 / 点按换表情</span>
+          <span class="hint" data-i18n="hint">カーソルを合わせる / 押す</span>
         </div>
         <h3><span class="dot"></span>gaga</h3>
-        <p class="role">CENTER · ACE</p>
-        <p>蓝发，站在 C 位的 ACE，自带队长气场。</p>
+        <p class="role" data-i18n="gaga_role">CENTER · ACE</p>
+        <p data-i18n="gaga_desc">青い髪。センターに立つ ACE で、リーダーの風格をまとっています。</p>
       </article>
 
       <article class="mcard" tabindex="0" role="button"
-        data-name="juju" data-color="#9d7aea" style="--member:#9d7aea"
-        aria-label="juju：站位左三，沉稳可靠的姐姐位。按 Enter 切换表情并打招呼">
+        data-name="juju" data-color="#9d7aea" style="--member:#9d7aea">
         <div class="picbox">
-          <img class="front" src="https://cdn.onewonder.co.jp/media/mascot/juju_2dcute_front.png" alt="juju 正典立绘" loading="lazy" decoding="async" width="600" height="800">
+          <img class="front" src="https://cdn.onewonder.co.jp/media/mascot/juju_2dcute_front.png" alt="juju" loading="lazy" decoding="async" width="600" height="800">
           <img class="expr-smile" src="https://cdn.onewonder.co.jp/media/mascot/expr-crops/juju_smile.png" alt="" loading="lazy" decoding="async" aria-hidden="true" width="307" height="720">
           <img class="expr-surprised" src="https://cdn.onewonder.co.jp/media/mascot/expr-crops/juju_surprised.png" alt="" loading="lazy" decoding="async" aria-hidden="true" width="307" height="720">
-          <span class="hint">悬停 / 点按换表情</span>
+          <span class="hint" data-i18n="hint">カーソルを合わせる / 押す</span>
         </div>
         <h3><span class="dot"></span>juju</h3>
-        <p class="role">沉稳可靠的姐姐位</p>
-        <p>站位左三，沉稳可靠，是让人安心的姐姐。</p>
+        <p class="role" data-i18n="juju_role">落ち着いた姉さん役</p>
+        <p data-i18n="juju_desc">左から 3 番目。落ち着いて頼れる、安心感のある姉さん役。</p>
       </article>
 
       <article class="mcard" tabindex="0" role="button"
-        data-name="baibai" data-color="#f0a94b" style="--member:#f0a94b"
-        aria-label="baibai：队长，站位右一。按 Enter 切换表情并打招呼">
+        data-name="baibai" data-color="#f0a94b" style="--member:#f0a94b">
         <div class="picbox">
-          <img class="front" src="https://cdn.onewonder.co.jp/media/mascot/baibai_2dcute_front.png" alt="baibai 正典立绘" loading="lazy" decoding="async" width="600" height="800">
+          <img class="front" src="https://cdn.onewonder.co.jp/media/mascot/baibai_2dcute_front.png" alt="baibai" loading="lazy" decoding="async" width="600" height="800">
           <img class="expr-smile" src="https://cdn.onewonder.co.jp/media/mascot/expr-crops/baibai_smile.png" alt="" loading="lazy" decoding="async" aria-hidden="true" width="307" height="720">
           <img class="expr-surprised" src="https://cdn.onewonder.co.jp/media/mascot/expr-crops/baibai_surprised.png" alt="" loading="lazy" decoding="async" aria-hidden="true" width="307" height="720">
-          <span class="hint">悬停 / 点按换表情</span>
+          <span class="hint" data-i18n="hint">カーソルを合わせる / 押す</span>
         </div>
         <h3><span class="dot"></span>baibai</h3>
-        <p class="role">LEADER · 站位右一</p>
-        <p>Wonder4ge 的队长，站位右一，稳稳掌舵。</p>
+        <p class="role" data-i18n="baibai_role">LEADER · 右端</p>
+        <p data-i18n="baibai_desc">Wonder4ge のリーダー。右端に立ち、しっかり舵を取ります。</p>
       </article>
     </div>
   </section>
@@ -249,8 +592,8 @@
 
 <footer>
   <div class="wrap fin">
-    <b>Wonder4ge 小屋</b> · 单文件 · 纯前端 · 零外部依赖 · 明暗主题自动跟随系统 · 本页不收集任何数据<br>
-    <span class="canon-note">© Wonder4ge — 角色形象为正典设定，禁止二次修改。</span>
+    <span data-i18n="foot">Wonder4ge 小屋 · 単一ファイル · フロントエンドのみ · 外部依存ゼロ · 明暗は端末設定に追従 · このページはデータを一切収集しません</span><br>
+    <span class="canon-note" data-i18n="canon">© Wonder4ge — キャラクターは正典設定です。改変を禁じます。</span>
   </div>
 </footer>
 
@@ -262,41 +605,26 @@ var RM = false;
 try { RM = matchMedia('(prefers-reduced-motion: reduce)').matches; } catch(e){}
 function rand(a,b){ return a + Math.random()*(b-a); }
 
-/* ---------- 预置台词（公开口径） ---------- */
-var LINES = {
-  yaya: [
-    '「呀哈！yaya 来啦～」',
-    '「今天也想被夸夸，可以吗？」',
-    '「喵呜……被发现偷偷打瞌睡了。」',
-    '「忙内也是有实力的哦！」'
-  ],
-  gaga: [
-    '「C 位在此，视线都给我。」——gaga',
-    '「交给我就对了。」——gaga',
-    '「队长气场，两米八。」——gaga',
-    '「下一个舞台，也拿下。」——gaga'
-  ],
-  juju: [
-    '「别急，慢慢来。」——juju',
-    '「有我在，放心。」——juju',
-    '「姐姐帮你们看着呢。」——juju',
-    '「稳一点，再稳一点。」——juju'
-  ],
-  baibai: [
-    '「集合！小屋要开工啦。」——baibai',
-    '「队长先上，大家跟上。」——baibai',
-    '「今天也全员平安，很好。」——baibai',
-    '「站在最右边的人，负责收尾。」——baibai'
-  ]
-};
+/* ---------- セリフ（R10 で 7 言語化。辞書 MS_I18N の lines を参照する） ----------
+   従来はこの位置に中国語のセリフを直書きしていた。
+   表示言語を切り替えたときに次のセリフから新しい言語になるよう、
+   固定の配列ではなく都度辞書を引く関数にしてある。 */
+function linesFor(name){
+  var d = window.MS_I18N[window.MS_LANG] || window.MS_I18N.ja;
+  var L = (d.lines && d.lines[name]) || (window.MS_I18N.ja.lines[name]) || [];
+  return L;
+}
 var ALL_NAMES = ['yaya','gaga','juju','baibai'];
 
 /* ---------- 弹幕 ---------- */
 var danBox = document.getElementById('danmaku');
 var danCount = 0;
 function pickLine(name){
-  var arr = LINES[name] || [];
-  return arr[Math.floor(Math.random()*arr.length)];
+  var arr = linesFor(name);
+  if(!arr.length) return '';
+  /* セリフの末尾に話し手の名前を付ける（従来は中国語版だけ「——gaga」等が
+     手書きで入っていて yaya だけ無い、という不統一があった）。 */
+  return arr[Math.floor(Math.random()*arr.length)] + ' — ' + name;
 }
 function spawnDan(text){
   if(!danBox) return;
@@ -396,6 +724,101 @@ if(!RM){
   }, 9500);
 }
 
+})();
+</script>
+
+<script>
+/* ============================================================================
+   R10: 言語ドロップダウンの結線。index.html と同じ挙動・同じキーボード操作。
+   ・選択肢のラベルは各言語の自言語表記（読めない言語名を訳すと探せなくなる）
+   ・localStorage キーは index.html と共有（kb_lang）なので、
+     どちらのページで切り替えても相互に引き継がれる
+   ============================================================================ */
+(function(){
+  'use strict';
+  var LANGS = [['ja','日本語'],['en','English'],['zh','中文'],
+               ['ko','한국어'],['de','Deutsch'],['es','Español'],['fr','Français']];
+  var btn  = document.getElementById('ms-lang-btn');
+  var list = document.getElementById('ms-lang-list');
+  var label= document.getElementById('ms-lang-label');
+  if(!btn || !list) return;
+
+  var CHECK = '<span class="lang-check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"'
+    + ' stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">'
+    + '<path d="m5 12.5 4.5 4.5L19 7"/></svg></span>';
+
+  function render(){
+    list.innerHTML = LANGS.map(function(p){
+      return '<li role="option" tabindex="-1" data-lang="'+p[0]+'" lang="'+p[0]+'" aria-selected="false">'
+        + CHECK + '<span>' + p[1] + '</span></li>';
+    }).join('');
+  }
+  function sync(){
+    var cur = window.MS_LANG;
+    var hit = LANGS.filter(function(p){ return p[0] === cur; })[0];
+    label.textContent = hit ? hit[1] : cur;
+    Array.prototype.forEach.call(list.querySelectorAll('[role="option"]'), function(o){
+      var on = o.dataset.lang === cur;
+      o.setAttribute('aria-selected', on ? 'true' : 'false');
+      o.classList.toggle('on', on);
+    });
+  }
+  function setLang(code){
+    if(code === window.MS_LANG) return;
+    window.MS_LANG = code;
+    try { localStorage.setItem('kb_lang', code); } catch(e){}
+    document.documentElement.lang = code;
+    window.msApplyI18N();
+    sync();
+  }
+
+  var opts   = function(){ return Array.prototype.slice.call(list.querySelectorAll('[role="option"]')); };
+  var isOpen = function(){ return !list.hidden; };
+  function open(){
+    list.hidden = false;
+    btn.setAttribute('aria-expanded','true');
+    var o = opts().filter(function(x){ return x.dataset.lang === window.MS_LANG; })[0] || opts()[0];
+    if(o) o.focus();
+  }
+  function close(refocus){
+    if(!isOpen()) return;
+    list.hidden = true;
+    btn.setAttribute('aria-expanded','false');
+    if(refocus) btn.focus();
+  }
+  function move(from, delta){
+    var o = opts(), i = o.indexOf(from);
+    var n = o[(i + delta + o.length) % o.length];
+    if(n) n.focus();
+  }
+
+  btn.addEventListener('click', function(){ isOpen() ? close(true) : open(); });
+  btn.addEventListener('keydown', function(e){
+    if(e.key === 'ArrowDown' || e.key === 'ArrowUp'){ e.preventDefault(); open(); }
+  });
+  list.addEventListener('click', function(e){
+    var o = e.target.closest('[role="option"]');
+    if(!o) return;
+    close(true); setLang(o.dataset.lang);
+  });
+  list.addEventListener('keydown', function(e){
+    var o = e.target.closest('[role="option"]');
+    if(!o) return;
+    if(e.key === 'ArrowDown'){ e.preventDefault(); move(o, 1); }
+    else if(e.key === 'ArrowUp'){ e.preventDefault(); move(o, -1); }
+    else if(e.key === 'Home'){ e.preventDefault(); opts()[0].focus(); }
+    else if(e.key === 'End'){ e.preventDefault(); opts()[opts().length-1].focus(); }
+    else if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); close(true); setLang(o.dataset.lang); }
+    else if(e.key === 'Escape'){ e.preventDefault(); close(true); }
+    else if(e.key === 'Tab'){ close(false); }
+  });
+  document.addEventListener('click', function(e){
+    if(isOpen() && !e.target.closest('#ms-lang')) close(false);
+  });
+
+  render();
+  window.msApplyI18N();   /* 初回：静的マークアップを表示言語で置き換える */
+  sync();
 })();
 </script>
 </body>
