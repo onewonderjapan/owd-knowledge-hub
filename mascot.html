@@ -32,6 +32,28 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3E%3Crect x='4' y='8' width='22' height='16' rx='4' fill='%236d5ef0'/%3E%3Cpath d='M4 12l11 7 11-7' stroke='%23fff' stroke-width='2.2' fill='none'/%3E%3C/svg%3E">
 <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f4f6fb">
 <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0c0f16">
+<!-- R20-B4：共有時のメタ。実測（R20 検査）で index.html は og 16 件 + twitter 2 件を
+     持つのに、このページは canonical / og / twitter / robots がいずれも 0 件だった。
+     README でも 2 つ目の正式 URL として案内しているページなので、Slack / X / LINE に
+     貼っても題名も説明も画像も出ない状態は実害がある。
+     og:image は当面ハブ共通の /og.png を使う（1200x630 で検証済み）。
+     このページ専用の画像を作るなら差し替える。CDN のマスコット立ち絵は
+     1 枚 1.8〜2.2MB で縦横比も合わないため、そのままでは使えない。 -->
+<link rel="canonical" href="https://hub.onewonder.co.jp/mascot.html">
+<meta name="robots" content="index,follow">
+<meta property="og:title" content="Wonder4ge 小屋 — OneWonder ナレッジハブ">
+<meta property="og:description" content="Wonder4ge 小屋：yaya・gaga・juju・baibai の 4 人を紹介するインタラクティブなカード。立ち絵にカーソルを合わせると表情が変わります。">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://hub.onewonder.co.jp/mascot.html">
+<meta property="og:site_name" content="OneWonder ナレッジハブ">
+<meta property="og:locale" content="ja_JP">
+<meta property="og:image" content="https://hub.onewonder.co.jp/og.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="OneWonder ナレッジハブ — AI 業界の公開情報を、検証可能な結論に変える">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://hub.onewonder.co.jp/og.png">
 <style>
   :root{
     --bg:#f4f6fb; --card:#ffffff; --ink:#20263a; --ink2:#5d6880; --ink3:#8a93ab;
@@ -84,7 +106,14 @@
   a.back-hub:hover{color:var(--accent);border-color:var(--accent)}
   .topbar .sub{margin-left:12px}
   .topbar-in .spacer{margin-left:auto}
-  @media (max-width:560px){ a.back-hub span.back-label{display:none} }
+  /* R29#13：従来は狭幅でラベルを消しており、375px でリンク幅 34px＝
+     「←」だけになっていた（実測）。何のリンクか分からないので、
+     短いラベル（data-i18n="back_short"）に差し替える。 */
+  a.back-hub span.back-short{display:none}
+  @media (max-width:560px){
+    a.back-hub span.back-label{display:none}
+    a.back-hub span.back-short{display:inline}
+  }
 
   /* ---------- R10: 言語ドロップダウン（index.html と同じ作法、色は本ページのトークン） ---------- */
   #ms-lang{position:relative;flex:0 0 auto}
@@ -266,7 +295,14 @@
     <b data-i18n="brand">Wonder4ge 小屋</b>
     <span class="spacer"></span>
     <!-- R1: ナレッジハブへ戻る。R10 で 7 言語対応（localStorage 'kb_lang' を index と共有）。 -->
-    <a class="back-hub" id="back-hub" href="index.html">←&nbsp;<span class="back-label" data-i18n="back">ナレッジハブへ戻る</span></a>
+    <!-- R22（重要）：R20-B5 で "./" にしたのは誤りだった。
+         "./" は file:// でファイルを直接開いたときディレクトリ自身を指すため、
+         「← ナレッジハブへ戻る」を押すとフォルダ一覧が出てしまう（実測）。
+         URL の重複（/ と /index.html）を避けたかったが、それは canonical で
+         担保されている話で、リンクが動かないことの方が重大。
+         file:// / ルート配信 / サブパス配信の 3 つすべてで成立するのは
+         "index.html" だけなので戻す。 -->
+    <a class="back-hub" id="back-hub" href="index.html">←&nbsp;<span class="back-label" data-i18n="back">ナレッジハブへ戻る</span><span class="back-short" data-i18n="back_short">ハブ</span></a>
     <!-- R10: index.html と同じ作法の言語ドロップダウン -->
     <div id="ms-lang">
       <button type="button" id="ms-lang-btn" aria-haspopup="listbox" aria-expanded="false"
@@ -295,7 +331,7 @@ window.MS_I18N = {
 ja:{
  doc_title:'Wonder4ge 小屋 · 4 人のメンバー',
  brand:'Wonder4ge 小屋', sub:'テーマは端末設定に追従（自動で明暗が切り替わります）',
- back:'ナレッジハブへ戻る', lang_aria:'表示言語',
+ back:'ナレッジハブへ戻る', back_short:'ハブ', lang_aria:'表示言語',
  badge:'WONDER4GE HOUSE', h1_a:'Wonder4ge', h1_b:'小屋',
  lede:'4 人がここに住んでいます。立ち絵にカーソルを合わせる（または Tab + Enter で選ぶ）と表情が変わります。「挨拶する」を押すと、屋根の上に 4 人のセリフが流れます。',
  wave:'挨拶する', ctrl_note:'セリフはブラウザ側でランダムに選ばれます・通信は行いません',
@@ -318,7 +354,7 @@ ja:{
 en:{
  doc_title:'Wonder4ge House · The four members',
  brand:'Wonder4ge House', sub:'Theme follows your device (light / dark switches automatically)',
- back:'Back to the Knowledge Hub', lang_aria:'Display language',
+ back:'Back to the Knowledge Hub', back_short:'Hub', lang_aria:'Display language',
  badge:'WONDER4GE HOUSE', h1_a:'Wonder4ge', h1_b:'House',
  lede:'Four members live here. Hover over a character (or select it with Tab + Enter) and her expression changes. Press “Say hello” and their lines drift across the roof.',
  wave:'Say hello', ctrl_note:'Lines are picked at random in your browser · nothing is sent anywhere',
@@ -341,7 +377,7 @@ en:{
 zh:{
  doc_title:'Wonder4ge 小屋 · 四位成员',
  brand:'Wonder4ge 小屋', sub:'主题跟随系统 · 自动明暗',
- back:'返回知识中枢', lang_aria:'显示语言',
+ back:'返回知识中枢', back_short:'中枢', lang_aria:'显示语言',
  badge:'WONDER4GE HOUSE', h1_a:'Wonder4ge', h1_b:'小屋',
  lede:'四位成员住在这里：把鼠标放到立绘上（或用 Tab + Enter 点按），她们会切换表情；点「打招呼」，屋顶会飘过她们的弹幕。',
  wave:'打招呼', ctrl_note:'弹幕台词前端随机 · 纯本地运行',
@@ -364,7 +400,7 @@ zh:{
 ko:{
  doc_title:'Wonder4ge 하우스 · 네 명의 멤버',
  brand:'Wonder4ge 하우스', sub:'테마는 기기 설정에 따름 (밝게 / 어둡게 자동 전환)',
- back:'널리지 허브로 돌아가기', lang_aria:'표시 언어',
+ back:'널리지 허브로 돌아가기', back_short:'허브', lang_aria:'표시 언어',
  badge:'WONDER4GE HOUSE', h1_a:'Wonder4ge', h1_b:'하우스',
  lede:'네 명이 여기 살고 있습니다. 일러스트에 커서를 올리면 (또는 Tab + Enter 로 선택하면) 표정이 바뀝니다. 「인사하기」를 누르면 지붕 위로 네 사람의 대사가 흘러갑니다.',
  wave:'인사하기', ctrl_note:'대사는 브라우저에서 무작위로 선택됩니다 · 통신은 하지 않습니다',
@@ -387,7 +423,7 @@ ko:{
 de:{
  doc_title:'Wonder4ge House · Die vier Mitglieder',
  brand:'Wonder4ge House', sub:'Das Design folgt Ihrem Gerät (hell / dunkel schaltet automatisch)',
- back:'Zurück zum Knowledge Hub', lang_aria:'Anzeigesprache',
+ back:'Zurück zum Knowledge Hub', back_short:'Hub', lang_aria:'Anzeigesprache',
  badge:'WONDER4GE HOUSE', h1_a:'Wonder4ge', h1_b:'House',
  lede:'Vier Mitglieder wohnen hier. Fahren Sie über eine Figur (oder wählen Sie sie mit Tab + Enter) und ihr Ausdruck ändert sich. Ein Klick auf „Hallo sagen“ lässt ihre Sprüche über das Dach ziehen.',
  wave:'Hallo sagen', ctrl_note:'Die Sprüche werden im Browser zufällig gewählt · es wird nichts übertragen',
@@ -410,7 +446,7 @@ de:{
 es:{
  doc_title:'Wonder4ge House · Las cuatro integrantes',
  brand:'Wonder4ge House', sub:'El tema sigue tu dispositivo (claro / oscuro cambia automáticamente)',
- back:'Volver al Knowledge Hub', lang_aria:'Idioma de la interfaz',
+ back:'Volver al Knowledge Hub', back_short:'Hub', lang_aria:'Idioma de la interfaz',
  badge:'WONDER4GE HOUSE', h1_a:'Wonder4ge', h1_b:'House',
  lede:'Aquí viven cuatro integrantes. Pasa el cursor sobre una (o selecciónala con Tab + Enter) y cambiará su expresión. Pulsa «Saludar» y sus frases cruzarán el tejado.',
  wave:'Saludar', ctrl_note:'Las frases se eligen al azar en tu navegador · no se envía nada',
@@ -433,7 +469,7 @@ es:{
 fr:{
  doc_title:'Wonder4ge House · Les quatre membres',
  brand:'Wonder4ge House', sub:'Le thème suit votre appareil (clair / sombre bascule automatiquement)',
- back:'Retour au Knowledge Hub', lang_aria:'Langue d’affichage',
+ back:'Retour au Knowledge Hub', back_short:'Hub', lang_aria:'Langue d’affichage',
  badge:'WONDER4GE HOUSE', h1_a:'Wonder4ge', h1_b:'House',
  lede:'Quatre membres vivent ici. Survolez une figure (ou sélectionnez-la avec Tab + Entrée) et son expression change. Appuyez sur « Dire bonjour » et leurs répliques traversent le toit.',
  wave:'Dire bonjour', ctrl_note:'Les répliques sont tirées au hasard dans votre navigateur · rien n’est envoyé',
