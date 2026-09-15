@@ -4,7 +4,12 @@ name: deploy-site
 on:
   push:
     branches: [main]
-    paths: ["index.html", "mascot.html"]
+    # og.png も対象に入れる：index.html だけを push すると og:image が 404 を返し、
+    # その 404 が SNS 側にキャッシュされて後から直しても反映されない
+    # app.css / app.js / app.i18n.js / app.data.js：PR #1 指摘 1 で index.html から切り出した。
+    # 片方だけ配信されると本体が動かないので、必ず同じ paths に入れておく
+    # （og.png を入れ忘れて SNS に 404 がキャッシュされたのと同じ失敗を避ける）
+    paths: ["index.html", "app.css", "app.js", "app.i18n.js", "app.data.js", "mascot.html", "og.png"]
   workflow_dispatch:
 
 permissions:
@@ -25,7 +30,15 @@ jobs:
       - name: Sync pages to site bucket
         run: |
           aws s3 cp index.html s3://onewonder-public-site/index.html --content-type "text/html; charset=utf-8"
+          # 本体と対で動くので HTML と同じ扱い（長いキャッシュを付けない）。
+          # デプロイ後に CloudFront を /* で無効化しているため、新旧が混ざることはない
+          aws s3 cp app.css     s3://onewonder-public-site/app.css     --content-type "text/css; charset=utf-8"
+          aws s3 cp app.js      s3://onewonder-public-site/app.js      --content-type "text/javascript; charset=utf-8"
+          aws s3 cp app.i18n.js s3://onewonder-public-site/app.i18n.js --content-type "text/javascript; charset=utf-8"
+          aws s3 cp app.data.js s3://onewonder-public-site/app.data.js --content-type "text/javascript; charset=utf-8"
           aws s3 cp mascot.html s3://onewonder-public-site/mascot.html --content-type "text/html; charset=utf-8"
+          # OG 画像は内容が変わらないので長めにキャッシュさせる（HTML は既定どおり）
+          aws s3 cp og.png s3://onewonder-public-site/og.png --content-type "image/png" --cache-control "public, max-age=86400"
 
       - name: Invalidate CloudFront
         run: aws cloudfront create-invalidation --distribution-id E2PSKJQMU4ZWTB --paths "/*"

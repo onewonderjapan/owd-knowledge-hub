@@ -1,0 +1,39 @@
+name: pr-check
+
+# PR #1 の指摘 5 への対応。
+# deploy.yml は `on: push / branches:[main]` のみで、PR では一度も検証されず、
+# 壊れた HTML がそのまま本番へ入り得る状態だった。
+# ここでは「本番に入ると困るもの」だけを止める（設計の良し悪しは人のレビューに任せる）。
+#
+# deploy.yml には手を入れていない。公開の挙動を変えないため。
+
+on:
+  pull_request:
+    branches: [main]
+  # feature ブランチへの push でも走らせる（PR を作る前に気づけるように）
+  push:
+    branches-ignore: [main]
+  workflow_dispatch:
+
+# 読み取りのみ。デプロイ権限（OIDC）は付けない。
+permissions:
+  contents: read
+
+concurrency:
+  # 同じブランチに続けて push したときは、古い実行を止める
+  group: pr-check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  static-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          # 依存パッケージを入れないのでキャッシュも要らない
+
+      - name: 静的検証
+        run: node tools/pr-check.mjs
