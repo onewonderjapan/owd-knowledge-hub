@@ -1,0 +1,1568 @@
+/* ============================================================================
+   app.css — 画面のスタイル
+   ----------------------------------------------------------------------------
+   PR #1 の指摘 1（「后续请拆 app.css / app.js」）への対応で index.html から
+   切り出した。index.html の <head> 内で <link> により読み込む（描画を
+   ブロックするので、ちらつきは起きない）。
+
+   注意：R1 以降の各ラウンドで「後から上書きする層」を重ねてきたため、
+   同じセレクタが複数回定義されている箇所がある。実測では
+     header / .lane-tile / .krow / .concl  各 5 回
+     th / nav button / main                各 4 回
+     --green / --bg                        各 7 回（1 つは @media print 用）
+   直すときは「最後に来る定義が勝つ」ことを踏まえ、必ず実測で確認すること。
+   （重複の整理そのものは別ラウンド。まずは index.html からの分離を優先した）
+   ========================================================================== */
+:root{
+  --bg:#f5f7fa; --panel:#ffffff; --panel2:#eef1f6; --border:#dde3ec;
+  --text:#1c2330; --dim:#5a6575; --accent:#2563eb; --accent2:#7c3aed;
+  --green:#16a34a; --yellow:#d97706; --red:#dc2626;
+  --particle:37,99,235; --edge:#c3cad6;
+}
+html[data-theme="dark"]{
+  --bg:#0f1115; --panel:#171a21; --panel2:#1d222c; --border:#262b36;
+  --text:#dde3ea; --dim:#98a2b3; --accent:#6ea8fe; --accent2:#a78bfa;
+  --green:#4ade80; --yellow:#facc15; --red:#f87171;
+  --particle:140,190,255; --edge:#3d4658;
+  color-scheme: dark; scrollbar-color:#4a5568 #171a21;
+}
+:root{color-scheme:light}
+/* 防止长英文/路径撑破栅格造成整页横向滚动 */
+.grid3 > *, .cgrid > *, .hubitem > *, .lane-grid > *{min-width:0}
+.ctxt, .cfrom, .footnote, .detail, details{overflow-wrap:anywhere}
+:where(button, a, [tabindex]):focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.hubitem.static{cursor:default}
+.hubitem.static:hover{background:transparent}
+/* 事业线入口栅格（可复用板块，响应式） */
+/* R30#6：4 列固定だとタイル 2 枚のとき右半分（1440px で 684px）が空く。
+   auto-fit で空トラックを畳み、枚数が戻れば自動で 4 列に戻る。 */
+.lane-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+.lane-tile{display:flex;flex-direction:column;align-items:flex-start;gap:6px;text-align:left;
+  font:inherit;color:inherit;cursor:pointer}
+.lane-tile .lane-name{font-size:15px;font-weight:700}
+@media(max-width:980px){.lane-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:620px){.lane-grid{grid-template-columns:1fr}}
+/* ---- v2 组件（KB-DISPLAY-SPEC）：统计条 / 时间线 / 信息框 / 结论区 / 热度条 ---- */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:1px;background:var(--border);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin:10px 0 14px}
+.stat{background:var(--panel);padding:10px 12px;min-width:0}
+.stat .v{font-size:22px;font-weight:600;line-height:1.1;font-variant-numeric:tabular-nums}
+.stat .v small{font-size:11.5px;color:var(--dim);font-weight:400;margin-left:3px}
+.stat .k{font-size:11.5px;color:var(--dim);margin-top:3px}
+.krow{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:5px 0;border-bottom:1px solid var(--border);font-size:13px;min-width:0}
+.krow:last-child{border-bottom:0}
+.krow .l{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.krow .r{font-variant-numeric:tabular-nums;color:var(--dim);white-space:nowrap;font-size:12.5px}
+.bartrack{flex:1;height:8px;background:var(--panel2);border-radius:4px;overflow:hidden;max-width:42%}
+.barfill{height:8px;border-radius:4px;background:var(--accent)}
+.up{color:var(--green);font-weight:600}.down{color:var(--red);font-weight:600}.flat{color:var(--dim)}
+.evcard{border-left:3px solid var(--accent);padding:6px 10px;margin:6px 0;background:var(--panel2);border-radius:0 8px 8px 0;font-size:13px}
+.evcard .m{font-size:11.5px;color:var(--dim)}
+.evcard.updated{border-left-color:#eb6834}.evcard.watch{border-left-color:#eda100}
+.concl{background:var(--panel2);border-left:3px solid var(--accent);border-radius:0 10px 10px 0;padding:10px 14px;margin:10px 0}
+.concl ol{margin:6px 0 0;padding-left:20px}.concl li{margin:3px 0}
+.infobox{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:10px 14px;font-size:12.5px}
+.infobox dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+.infobox dt{color:var(--dim)}.infobox dd{margin:0;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--dim);margin:4px 0 8px;flex-wrap:wrap}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.svgtext{font:11.5px system-ui,sans-serif;fill:var(--dim)}
+.svgval{font:11.5px system-ui,sans-serif;fill:var(--dim)}
+.svglab{font:12px system-ui,sans-serif;fill:var(--text)}
+.tooltip{position:fixed;pointer-events:none;background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:6px 8px;font-size:12px;box-shadow:0 2px 8px rgba(0,0,0,.12);display:none;z-index:99}
+/* 移动端与行宽（P1-10） */
+#mdbody p, #mdbody li, .concl li{max-width:72ch}
+@media(max-width:760px){
+  .cols{flex-direction:column}
+  .list{width:100%;flex:none;position:static;max-height:44vh}
+  .detail{width:100%}
+  main{padding:12px 10px 40px}
+  header{padding:8px 10px}
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.65 "Segoe UI","Microsoft YaHei",system-ui,sans-serif;transition:background .3s,color .3s}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:12px 22px;border-bottom:1px solid var(--border);background:var(--panel);position:relative;z-index:1}
+header .logo{display:flex;align-items:center;gap:8px;font-size:18px;font-weight:700}
+header .logo svg{color:var(--accent)}
+.chip{background:var(--panel2);border:1px solid var(--border);border-radius:12px;padding:2px 10px;font-size:12px;color:var(--dim);white-space:nowrap}
+.chip b{color:var(--text)}
+.chip.warn{color:var(--yellow);border-color:var(--yellow)}
+#q{flex:1;min-width:200px;background:var(--panel2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:8px 12px;font-size:14px;outline:none;min-height:36px}
+#q:focus{border-color:var(--accent)}
+#theme-btn{background:var(--panel2);border:1px solid var(--border);border-radius:8px;color:var(--text);width:36px;height:36px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+nav{display:flex;gap:4px;padding:6px 22px 0;border-bottom:1px solid var(--border);background:var(--panel);position:relative;z-index:1}
+nav button{background:none;border:none;border-bottom:2px solid transparent;color:var(--dim);padding:9px 16px;font-size:15px;cursor:pointer}
+nav button.on{color:var(--accent);border-bottom-color:var(--accent);font-weight:600}
+main{padding:18px 22px 40px;max-width:1320px;margin:0 auto;position:relative;z-index:1}
+/* R11-b1: width/height を明示しないと、絶対配置の置換要素（canvas）は
+   幅高さを「固有サイズ」＝width/height 属性から解決してしまう。
+   particles() が cv.width = clientWidth * dpr を書き込むため、
+   dpr>1 の端末では resize ごとに 375→750→1500… と倍々に膨張していた
+   （モバイルはアドレスバーの開閉でも resize が飛ぶ）。100% 固定で逆流を断つ。 */
+#bgfx{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;opacity:.5}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:16px}
+/* R16: h1 の直下に来る区画見出しを h3 → h2 に上げた（レベルの飛びを解消）。
+   見た目を変えないため、既存の .panel h3 系の指定を h2.sec-h にも同じだけ当てる。 */
+.panel h3, .panel h2.sec-h{margin:0 0 10px;font-size:15px;display:flex;align-items:center;gap:7px}
+.panel h3 svg, .panel h2.sec-h svg{color:var(--accent);flex:none}
+table{border-collapse:collapse;width:100%}
+th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--border);font-size:13.5px;vertical-align:top}
+th{color:var(--dim);font-weight:600;letter-spacing:.4px;font-size:12px;white-space:nowrap}
+th.sortable{cursor:pointer}th.sortable:hover{color:var(--accent)}
+tr:hover td{background:var(--panel2)}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.cols{display:flex;gap:16px;align-items:flex-start}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:middle}
+.dot.g{background:var(--green)}.dot.y{background:var(--yellow)}.dot.r{background:var(--red)}
+.f-g{color:var(--green)}.f-y{color:var(--yellow)}.f-r{color:var(--red)}
+.tagchip{display:inline-block;background:var(--panel2);border:1px solid var(--border);border-radius:12px;padding:1px 10px;font-size:12px;margin:2px;cursor:pointer;color:var(--dim);white-space:nowrap}
+.tagchip.on{color:var(--accent);border-color:var(--accent);font-weight:600}
+select,button.btn{background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:7px;padding:5px 9px;font-size:13px}
+.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+.filters label{font-size:12.5px;color:var(--dim);display:flex;align-items:center;gap:4px}
+.banner{display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:linear-gradient(90deg,var(--panel),var(--panel2));border:1px solid var(--border);border-radius:12px;padding:12px 18px;margin-bottom:16px}
+.banner .big{font-size:16px;font-weight:700}
+.top5{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
+.top5 .v{background:var(--panel);border:1px solid var(--border);border-left:4px solid var(--pc,#888);border-radius:12px;padding:14px;cursor:pointer;transition:transform .2s,border-color .2s}
+.top5 .v:hover{transform:translateY(-3px);border-color:var(--accent)}
+.top5 .rk{font-size:24px;font-weight:800;color:var(--accent);font-variant-numeric:tabular-nums}
+.top5 .t{font-weight:700;font-size:14.5px;margin:4px 0 2px;line-height:1.4}
+.top5 .m{font-size:17px;font-weight:800;font-variant-numeric:tabular-nums}
+.top5 .w{font-size:13.5px;color:var(--text);opacity:.85;margin-top:6px;line-height:1.5;font-weight:500}
+.top5 .c{font-size:11.5px;color:var(--dim);margin-top:6px}
+/* ---- 结论墙 ---- */
+.cgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(360px,100%),1fr));gap:10px}
+.ccard{background:var(--panel2);border:1px solid var(--border);border-left:3px solid var(--pc,#888);border-radius:10px;padding:10px 12px;cursor:pointer;display:flex;flex-direction:column;gap:5px}
+.ccard:hover{border-color:var(--accent)}
+.csec{font-size:11.5px;color:var(--dim)}
+.ctxt{font-size:14px;line-height:1.55;flex:1}
+.csrc{display:flex;flex-wrap:wrap;gap:6px}
+.srclink{font-size:11.5px;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:1px 8px;color:var(--accent);text-decoration:none;white-space:nowrap}
+.srclink:hover{border-color:var(--accent);text-decoration:none}
+.cfrom{font-size:11px;color:var(--dim)}
+.concl{font-size:14px;font-weight:700;color:var(--accent);margin:0 0 8px}
+.footnote{font-size:12px;color:var(--dim);margin-top:8px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid3{display:grid;grid-template-columns:1.1fr 1fr .9fr;gap:16px}
+.cgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(360px,100%),1fr));gap:10px}
+@media(max-width:980px){.grid2,.grid3{grid-template-columns:1fr}}
+/* R30#11：grid3 の 1 段組では、インラインの grid-column:span 2 が
+   0px の 2 本目トラックを作り、下のパネルだけ 20px 狭くなって右端がずれていた
+   （実測 上 705px / 下 685px）。1 段組では span を無効にする。 */
+@media(max-width:980px){.grid2 > *, .grid3 > *{grid-column:auto !important}}
+/* R30#8：概要の全幅パネルだけ行長の上限が無く、「今週の新しい結論」が
+   全角 121 字/行になっていた（詳細ページは 44 字で適切）。45em ＝
+   全角約 45 字・半角約 80 字。 */
+#view-overview .panel > p{max-width:45em}
+/* R32#B：ol / ul は max-width で細くすると右に大きな空白が残るので段組みに。 */
+#view-overview .panel > ol, #view-overview .panel > ul{columns:42em auto; column-gap:40px}
+/* 1 段に戻る幅では列幅＝パネル幅になり行長が伸びる（実測 900px で 72 字/行）。
+   項目側にも上限をかけると、段数にかかわらず 45 字前後で揃う。
+   2 段のときは列幅（実測 563px）の方が狭いのでこの上限は効かない。 */
+#view-overview .panel > ol > li, #view-overview .panel > ul > li{break-inside:avoid; max-width:45em}
+/* 紙面では列をまたぐと読み順が崩れるので 1 段に戻す。 */
+@media print{ #view-overview .panel > ol, #view-overview .panel > ul{columns:1} }
+
+svg.chart{width:100%;height:auto;display:block}
+svg.chart text{fill:var(--dim);font-size:11px}
+svg.chart .val{fill:var(--text);font-weight:600;font-size:12px}
+.check{display:flex;align-items:center;gap:8px;padding:7px 4px;border-bottom:1px dashed var(--border);cursor:pointer;font-size:14px}
+.check input{width:16px;height:16px;accent-color:var(--accent)}
+.check.done span{color:var(--dim);text-decoration:line-through}
+.list{width:330px;flex:none;position:sticky;top:88px;max-height:calc(100vh - 104px);overflow:auto}
+tr:nth-child(even) td{background:rgba(127,127,127,.045)}
+#intro .stats{font-size:13px;color:var(--dim);z-index:1}
+.list .item{padding:9px 11px;border-radius:9px;cursor:pointer;border:1px solid transparent}
+.list .item:hover{background:var(--panel2)}
+.list .item.sel{background:var(--panel2);border-color:var(--accent)}
+.list .t{font-weight:600;font-size:14px}
+.meta{font-size:12px;color:var(--dim)}
+.detail{flex:1;min-width:0;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:20px 24px}
+.detail h1{font-size:24px;margin-top:0}
+.detail h2{font-size:17px;border-bottom:1px solid var(--border);padding-bottom:4px;margin-top:24px}
+.detail h3{font-size:15px}
+.detail p,.detail li{font-size:14.5px}
+.detail table{margin:8px 0}
+.detail code{background:var(--panel2);border-radius:4px;padding:1px 5px;font-size:12.5px}
+.detail blockquote{border-left:3px solid var(--accent);margin:8px 0;padding:2px 12px;color:var(--dim)}
+.twrap{overflow-x:auto;margin:8px 0}
+.toc{background:var(--panel2);border-radius:9px;padding:8px 12px;margin:10px 0;font-size:13px}
+.toc a{color:var(--dim);cursor:pointer}
+.cred{display:inline-block;background:var(--panel2);border-radius:6px;padding:0 6px;font-size:11.5px;color:var(--dim);white-space:nowrap}
+.mtag{display:inline-block;border-radius:6px;padding:0 6px;font-size:11px;white-space:nowrap;background:rgba(217,119,6,.14);color:var(--yellow)}
+.pf{display:inline-block;border-radius:6px;padding:0 7px;font-size:11.5px;color:#fff;white-space:nowrap}
+.muted{color:var(--dim)}.kbd{font-size:12px;color:var(--dim)}
+.num{font-variant-numeric:tabular-nums;font-weight:700}
+.gwrap{display:flex;gap:16px;align-items:flex-start}
+.gwrap aside{width:280px;flex:none}
+.gwrap canvas{width:100%;max-width:100%;background:var(--panel);border:1px solid var(--border);border-radius:12px}
+.hubitem{display:flex;justify-content:space-between;align-items:center;padding:7px 10px;border-radius:8px;cursor:pointer;font-size:14px}
+.hubitem:hover{background:var(--panel2)}
+section{display:none}section.on{display:block}
+/* ---- v3 入场：3D 知识星球 ---- */
+#intro{position:fixed;inset:0;z-index:99;background:#05070f;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:opacity .55s ease,transform .55s ease;overflow:hidden}
+#intro.gone{opacity:0;transform:scale(1.06);pointer-events:none}
+#intro-canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none}
+.intro-inner{position:relative;z-index:2;text-align:center;pointer-events:none;padding:0 20px}
+.intro-badge{display:inline-block;font-size:11px;letter-spacing:.42em;color:#8b93b8;border:1px solid #2a3050;border-radius:999px;padding:6px 18px 6px 22px;background:rgba(129,140,248,.06);opacity:0;animation:fadeUp .6s ease .15s forwards}
+.intro-title{margin:20px 0 8px;font-size:clamp(42px,7.5vw,72px);font-weight:800;letter-spacing:.32em;display:flex;justify-content:center;color:#fff}
+.intro-title span{display:inline-block;opacity:0;filter:blur(14px);transform:translateY(30px) scale(.8);animation:charIn .5s cubic-bezier(.2,.7,.3,1.15) forwards;animation-delay:calc(.25s + var(--d)*.07s);background:linear-gradient(160deg,#fff 35%,#a5b4fc 75%,#f0abfc);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.intro-sub{margin:0;font-size:13.5px;letter-spacing:.16em;color:#7c86ad;opacity:0;animation:fadeUp .6s ease .7s forwards}
+#intro-enter{pointer-events:auto;margin-top:30px;font-size:15px;letter-spacing:.34em;text-indent:.34em;padding:13px 44px;border:none;border-radius:999px;color:#fff;cursor:pointer;background:linear-gradient(135deg,#4f46e5,#8b5cf6 60%,#d946ef);box-shadow:0 0 26px rgba(99,102,241,.5),inset 0 0 0 1px rgba(255,255,255,.14);opacity:0;animation:fadeUp .6s ease .95s forwards;transition:transform .2s,box-shadow .2s}
+#intro-enter:hover{transform:translateY(-2px) scale(1.04);box-shadow:0 0 46px rgba(139,92,246,.75),inset 0 0 0 1px rgba(255,255,255,.22)}
+.intro-hint{margin-top:22px;font-size:11px;letter-spacing:.38em;text-indent:.38em;color:#4d5678;opacity:0;animation:fadeUp .6s ease 1.2s forwards}
+@keyframes charIn{to{opacity:1;filter:blur(0);transform:none}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+/* ============ v3 · 美学重设计层（覆盖上方基础样式） ============ */
+:root{
+  --bg:#f7f6f2; --panel:#ffffff; --panel2:#f2f0ea; --border:#e5e1d6;
+  --text:#212530; --dim:#6c7280; --accent:#4f46e5; --accent2:#8b5cf6;
+  --green:#0e9f6e; --yellow:#b45309; --red:#dc2626;
+  --particle:99,102,241; --edge:#d9d4c6;
+  --grad:linear-gradient(135deg,#4f46e5,#8b5cf6 55%,#d946ef);
+  --shadow:0 1px 2px rgba(30,27,75,.05),0 6px 20px -6px rgba(30,27,75,.09);
+  --radius:14px;
+}
+html[data-theme="dark"]{
+  --bg:#0a0d15; --panel:#12161f; --panel2:#1a1f2b; --border:#252c3a;
+  --text:#e6eaf2; --dim:#8d97aa; --accent:#818cf8; --accent2:#a78bfa;
+  --green:#34d399; --yellow:#fbbf24; --red:#f87171;
+  --particle:129,140,248; --edge:#2b3442;
+  --grad:linear-gradient(135deg,#818cf8,#a78bfa 55%,#f472b6);
+  --shadow:0 1px 2px rgba(0,0,0,.45),0 10px 28px -10px rgba(0,0,0,.55);
+}
+body{background:
+  radial-gradient(1100px 480px at 85% -8%, color-mix(in srgb, var(--accent) 7%, transparent), transparent 60%),
+  radial-gradient(900px 420px at -10% 12%, color-mix(in srgb, var(--accent2) 5%, transparent), transparent 55%),
+  var(--bg);
+  letter-spacing:.1px}
+header{position:relative;z-index:60}
+nav{position:sticky;top:0;z-index:59;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  background:color-mix(in srgb, var(--panel) 84%, transparent);box-shadow:0 1px 0 var(--border)}
+nav button{transition:color .18s,border-color .18s}
+.panel{border-radius:var(--radius);box-shadow:var(--shadow)}
+.panel h3, .panel h2.sec-h{letter-spacing:.15px}
+.banner{border-radius:var(--radius);box-shadow:var(--shadow)}
+.stats{border-radius:var(--radius);box-shadow:var(--shadow)}
+.stat .v{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+#q{border-radius:10px;transition:border-color .15s,box-shadow .15s}
+#q:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent)}
+#theme-btn{transition:color .15s,border-color .15s}
+#theme-btn:hover{color:var(--accent);border-color:var(--accent)}
+#intro-btn{background:var(--panel2);border:1px solid var(--border);border-radius:8px;color:var(--text);width:36px;height:36px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px;transition:color .15s,border-color .15s}
+#intro-btn:hover{color:var(--accent);border-color:var(--accent)}
+.chip{border-radius:999px}
+.tagchip{border-radius:999px;transition:color .15s,border-color .15s,background .15s}
+.btn{border-radius:9px;cursor:pointer;transition:color .15s,border-color .15s}
+.btn:hover{color:var(--accent);border-color:var(--accent)}
+.krow{border-radius:8px;transition:background .12s}
+.krow:hover{background:var(--panel2)}
+th{letter-spacing:.6px}
+.small{font-size:12px;color:var(--dim);letter-spacing:.3px}
+.list{top:58px;max-height:calc(100vh - 72px)}
+.list .item{border-radius:10px;transition:background .12s,border-color .12s}
+.list .item.sel{background:color-mix(in srgb, var(--accent) 9%, transparent);border-color:color-mix(in srgb, var(--accent) 45%, transparent)}
+.detail{border-radius:var(--radius);box-shadow:var(--shadow);padding:26px 32px;line-height:1.75}
+.detail h1{font-size:25px;letter-spacing:-.02em;line-height:1.35}
+.detail h2{font-size:17.5px;border-bottom:none;padding:0 0 0 12px;position:relative;margin-top:30px}
+.detail h2::before{content:"";position:absolute;left:0;top:3px;bottom:3px;width:3px;border-radius:2px;background:var(--grad)}
+.detail blockquote{background:var(--panel2);border-radius:0 8px 8px 0;padding:8px 14px;border-left-color:var(--accent2)}
+.detail code{background:color-mix(in srgb, var(--accent) 10%, transparent);color:var(--accent);border-radius:6px;padding:2px 6px}
+.toc{border-radius:10px}
+.infobox{border-radius:12px;box-shadow:var(--shadow)}
+.concl{background:color-mix(in srgb, var(--accent) 6%, var(--panel2));border-radius:0 12px 12px 0}
+.ccard{border-radius:12px;transition:transform .16s,box-shadow .16s,border-color .16s}
+.ccard:hover{transform:translateY(-2px);box-shadow:var(--shadow);border-color:var(--accent)}
+.top5 .v{border-radius:12px;box-shadow:var(--shadow)}
+.lane-tile{border-radius:var(--radius);box-shadow:var(--shadow);position:relative;overflow:hidden;transition:transform .18s,box-shadow .18s}
+.lane-tile::before{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:var(--grad);opacity:.9}
+.lane-tile:hover{transform:translateY(-3px)}
+.evcard{border-radius:0 10px 10px 0}
+.srclink{border-radius:999px}
+::selection{background:color-mix(in srgb, var(--accent) 24%, transparent)}
+/* ---- 板块卡片栅格 ---- */
+.bhead{display:flex;align-items:center;gap:10px;margin:4px 0 14px}
+.bhead-title{font-size:18px;font-weight:700;letter-spacing:.01em}
+.bgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:14px}
+.bcard{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:15px 16px;cursor:pointer;display:flex;flex-direction:column;gap:8px;position:relative;overflow:hidden;transition:transform .18s,box-shadow .18s,border-color .18s}
+.bcard::before{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:var(--grad);opacity:.9}
+.bcard:hover{transform:translateY(-3px);border-color:var(--accent)}
+.bcard-name{font-size:15.5px;font-weight:700}
+.bcard-heat{display:flex;align-items:center;gap:10px}
+.bcard-heat .bartrack{max-width:none}
+.bcard-hv{font-size:12.5px;color:var(--dim);white-space:nowrap;font-variant-numeric:tabular-nums}
+.bcard-meta{font-size:12.5px;color:var(--dim)}
+.bcard-kw{display:flex;flex-wrap:wrap;gap:5px}
+.bcard-kw span{font-size:11.5px;background:var(--panel2);border:1px solid var(--border);border-radius:999px;padding:1px 9px;color:var(--dim)}
+/* ---- 视频数据筛选条卡片化 ---- */
+.filters{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:10px 14px}
+@media(max-width:760px){ .detail{padding:18px} .bgrid{grid-template-columns:1fr} }
+/* Top-level section switcher styles (markup rendered by JS only when DATA.public is set) */
+#section-nav{display:flex;flex-wrap:wrap;gap:8px;width:100%;padding:6px 0 0}
+#section-nav button{background:var(--panel2);border:1px solid var(--border);border-radius:999px;color:var(--dim);padding:5px 15px;font-size:13.5px;cursor:pointer;transition:color .15s,border-color .15s,background .15s}
+#section-nav button:hover{color:var(--accent);border-color:var(--accent)}
+#section-nav button.on{color:var(--accent);border-color:var(--accent);font-weight:600;
+  background:color-mix(in srgb, var(--accent) 9%, var(--panel2))}
+@media(max-width:760px){ #section-nav{padding-top:4px;gap:6px} }
+/* About section: reading layout (same .detail typography as note detail) + contact card.
+   Static markup; the container stays hidden unless the section switcher (DATA.public) unhides it. */
+#section-about .detail p{max-width:72ch}
+.about-card{margin-top:26px;background:var(--panel2);border:1px solid var(--border);border-radius:12px;padding:16px 20px;max-width:72ch}
+.about-card h3{margin:0 0 6px;font-size:15px}
+.about-card p.muted{margin:0 0 14px;font-size:14px}
+a.about-mail{display:inline-block;background:var(--panel);border:1px solid var(--border);border-radius:9px;color:var(--text);padding:8px 20px;font-size:14px;cursor:pointer;transition:color .15s,border-color .15s}
+a.about-mail:hover{color:var(--accent);border-color:var(--accent);text-decoration:none}
+/* Lab experiment card flow + detail view (filled by JS only when DATA.public is set) */
+.exp-result{font-size:13.5px;line-height:1.6;overflow-wrap:anywhere;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.exp-meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:auto}
+.conf-badge{display:inline-block;border-radius:999px;padding:1px 10px;font-size:12px;font-weight:600;white-space:nowrap;border:1px solid transparent}
+.conf-h{color:var(--green);background:color-mix(in srgb, var(--green) 12%, transparent);border-color:color-mix(in srgb, var(--green) 40%, transparent)}
+.conf-m{color:var(--yellow);background:color-mix(in srgb, var(--yellow) 12%, transparent);border-color:color-mix(in srgb, var(--yellow) 40%, transparent)}
+.conf-l{color:var(--red);background:color-mix(in srgb, var(--red) 10%, transparent);border-color:color-mix(in srgb, var(--red) 40%, transparent)}
+/* R1: 探索段階（旧 low）。赤い警告色ではなく中立色にする。判定基準は会社情報の
+   「調査手法と掲載基準」を参照。 */
+.conf-x{color:var(--dim);background:var(--panel2);border-color:var(--border)}
+.ev-link{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 12px;background:var(--panel2);border:1px solid var(--border);border-radius:10px;cursor:pointer;font-size:14px;overflow-wrap:anywhere;transition:border-color .15s}
+.ev-link:hover{border-color:var(--accent)}
+.ev-link .m{font-size:12px;color:var(--dim);white-space:nowrap}
+/* T-13 情报观察高光层：首屏信号卡 + 榜单总控点评位（仅 DATA.public 渲染） */
+.sig-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.sig-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px 16px;cursor:pointer;display:flex;flex-direction:column;gap:6px;position:relative;overflow:hidden;transition:transform .18s,box-shadow .18s,border-color .18s}
+.sig-card::before{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:var(--grad);opacity:.9}
+.sig-card:hover{transform:translateY(-3px);border-color:var(--accent)}
+.sig-src{display:flex;flex-wrap:wrap;gap:5px}
+.sig-title{font-size:15px;font-weight:700;line-height:1.45;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.sig-desc{font-size:13px;color:var(--dim);line-height:1.6;overflow-wrap:anywhere;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.sig-link{font-size:12.5px;color:var(--accent);margin-top:auto}
+@media(max-width:980px){.sig-grid{grid-template-columns:1fr}}
+.enote{margin-top:6px;padding:5px 10px;background:color-mix(in srgb, var(--accent) 7%, var(--panel2));
+  border-left:3px solid var(--accent);border-radius:0 8px 8px 0;font-size:12.5px;line-height:1.6;overflow-wrap:anywhere}
+.enote b{color:var(--accent);font-weight:600;margin-right:6px;white-space:nowrap}
+/* T-14a 实体聚合视图：共现实体 + 提及笔记双栏（窄屏单列，复用主题变量） */
+.ent-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:16px;align-items:start}
+@media(max-width:980px){.ent-grid{grid-template-columns:minmax(0,1fr)}}
+/* 390px 级窄屏：三枚统计卡的最小轨道宽会撑破面板，窄时压为单列 */
+#view-entity .stats{grid-template-columns:repeat(auto-fit,minmax(min(120px,100%),1fr))}
+@media(max-width:640px){#view-entity .stats{grid-template-columns:1fr}}
+/* T-14b 笔记悬停预览卡：固定定位 + pointer-events:none（不遮挡点击），隐藏时不参与布局；
+   仅 (hover: hover) 设备挂载，无 hover 设备连节点都不存在，既有布局零影响 */
+#note-preview{position:fixed;z-index:98;pointer-events:none;display:none;max-width:340px;
+  background:var(--panel);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow);
+  padding:10px 13px;font-size:13px;line-height:1.6}
+#note-preview .np-title{font-size:14px;font-weight:700;line-height:1.45;margin-bottom:5px;letter-spacing:-.01em}
+#note-preview .np-badges{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:5px}
+#note-preview .np-date{font-size:12px;color:var(--dim)}
+#note-preview .np-summary{color:var(--dim);overflow-wrap:anywhere}
+/* T-14d digest 时间线：日期分组垂直时间线 + 条目卡片。
+   颜色全部走主题变量 / color-mix（双主题自动适配），置信度徽标复用 conf-badge。 */
+.tl{position:relative;margin:4px 0 0;padding-left:30px}
+.tl::before{content:"";position:absolute;left:9px;top:8px;bottom:8px;width:2px;border-radius:2px;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--accent) 60%,transparent),color-mix(in srgb,var(--accent2) 22%,transparent))}
+.tl-group{position:relative;padding:2px 0 20px}
+.tl-group:last-child{padding-bottom:4px}
+.tl-node{position:absolute;left:-27px;top:11px;width:10px;height:10px;border-radius:50%;
+  background:var(--panel);border:3px solid var(--accent);
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 15%,transparent)}
+.detail .tl-date{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:6px 0 10px;
+  font-size:17px;font-weight:700;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+.tl-chan{font-size:12px;font-weight:500;color:var(--dim);background:var(--panel2);
+  border:1px solid var(--border);border-radius:999px;padding:1px 10px;white-space:nowrap}
+.tl-n{font-size:12px;color:var(--dim);white-space:nowrap}
+.tl-card{background:var(--panel);border:1px solid var(--border);border-radius:12px;
+  box-shadow:var(--shadow);padding:13px 17px;margin:0 0 12px;overflow-wrap:anywhere;
+  transition:border-color .15s}
+.tl-card:hover{border-color:color-mix(in srgb,var(--accent) 45%,var(--border))}
+.tl-card-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 4px}
+.tl-title{font-weight:700;font-size:15px;line-height:1.5}
+.tl-imp{font-size:12px;color:var(--dim);white-space:nowrap;font-variant-numeric:tabular-nums}
+.tl-status{display:inline-block;border-radius:999px;padding:0 9px;font-size:11.5px;font-weight:600;
+  white-space:nowrap;border:1px solid transparent}
+.tl-status-new{color:var(--green);background:color-mix(in srgb,var(--green) 12%,transparent);border-color:color-mix(in srgb,var(--green) 40%,transparent)}
+.tl-status-updated{color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,transparent);border-color:color-mix(in srgb,var(--accent) 40%,transparent)}
+.tl-status-watch{color:var(--yellow);background:color-mix(in srgb,var(--yellow) 12%,transparent);border-color:color-mix(in srgb,var(--yellow) 40%,transparent)}
+.tl-card-body{font-size:14px}
+.tl-card-body p:first-child{margin-top:2px}
+@media(max-width:760px){.tl{padding-left:22px}.tl-node{left:-23px}}
+/* T-32 全站统一转化入口：板块页脚 CTA 卡片（情报观察/实验室页脚，列表与详情视图共用）。
+   颜色全部走主题变量（双主题自动适配），按钮直接复用 a.about-mail 体系（地址与 rel 口径同 about-contact）；
+   窄屏收窄内边距防溢出。 */
+.cta-card{margin:20px 0 4px;background:var(--panel);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow);padding:20px 24px;text-align:center}
+/* R16: h3 â h2.sec-h ã«ä¸ããã®ã§ãåãæå®ãå½ã¦ã¦è¦ãç®ãä¿ã¤ */
+.cta-card h3, .cta-card h2.sec-h{margin:0 0 6px;font-size:16px}
+.cta-card .muted{margin:0 auto 14px;font-size:14px;max-width:60ch;overflow-wrap:anywhere}
+@media(max-width:760px){.cta-card{margin-top:14px;padding:14px 12px}}
+
+/* ==========================================================================
+   R1（2026-09-07 リニューアル）で追加したブロック
+   公開ナレッジハブの定石（1 画面目で「何者か」を言い切る → 根拠 → 単一 CTA）に合わせ、
+   ヒーロー / 言語切替 / サイトフッター / マスコット導線を追加。既存の .panel 体系とは
+   別レイヤーの視覚重量を持たせ、全要素が同じ重さで並ぶ問題を解消する。
+   ========================================================================== */
+
+/* ---- 言語切替（ja / en / zh / ko / de / es / fr）ヘッダーのドロップダウンのみ（R6 でフッター側は撤去）---- */
+#lang-switch{display:flex;gap:4px;align-items:center}
+#lang-switch button{background:var(--panel2);border:1px solid var(--border);border-radius:999px;
+  color:var(--dim);padding:4px 11px;font-size:12.5px;cursor:pointer;white-space:nowrap;
+  transition:color .15s,border-color .15s,background .15s}
+#lang-switch button:hover{color:var(--accent);border-color:var(--accent)}
+#lang-switch button.on{color:var(--accent);border-color:var(--accent);font-weight:600;
+  background:color-mix(in srgb, var(--accent) 9%, var(--panel2))}
+
+/* ---- ヒーロー（唯一の h1 を持つ最上位ブロック）---- */
+.hero{position:relative;overflow:hidden;background:var(--panel);border:1px solid var(--border);
+  border-radius:16px;box-shadow:var(--shadow);padding:34px 38px;margin:0 0 18px}
+.hero::before{content:"";position:absolute;left:0;right:0;top:0;height:4px;background:var(--grad);opacity:.95}
+.hero-badge{display:inline-block;font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--accent);background:color-mix(in srgb, var(--accent) 9%, transparent);
+  border:1px solid color-mix(in srgb, var(--accent) 32%, transparent);
+  border-radius:999px;padding:3px 12px;margin-bottom:14px}
+.hero h1{font-size:34px;line-height:1.28;letter-spacing:-.02em;margin:0 0 12px;max-width:26ch}
+.hero-lead{font-size:15.5px;line-height:1.85;color:var(--dim);margin:0 0 22px;max-width:60ch}
+.hero-stats{display:flex;flex-wrap:wrap;gap:0;margin:0 0 22px;border:1px solid var(--border);
+  border-radius:12px;overflow:hidden;background:var(--border);width:fit-content;max-width:100%}
+.hero-stat{background:var(--panel2);padding:12px 26px 11px;min-width:0}
+.hero-stat .hv{font-size:26px;font-weight:600;line-height:1.1;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.hero-stat .hk{font-size:11.5px;color:var(--dim);margin-top:3px}
+.hero-cta{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+a.btn-primary{display:inline-block;background:var(--accent);border:1px solid var(--accent);
+  border-radius:10px;color:#fff;padding:10px 24px;font-size:14.5px;font-weight:600;cursor:pointer;
+  transition:filter .15s}
+a.btn-primary:hover{filter:brightness(1.08);text-decoration:none;color:#fff}
+html[data-theme="dark"] a.btn-primary{color:#0f1115}
+html[data-theme="dark"] a.btn-primary:hover{color:#0f1115}
+a.btn-ghost{display:inline-block;background:transparent;border:1px solid var(--border);
+  border-radius:10px;color:var(--text);padding:10px 20px;font-size:14.5px;cursor:pointer;
+  transition:color .15s,border-color .15s}
+a.btn-ghost:hover{color:var(--accent);border-color:var(--accent);text-decoration:none}
+.hero-foot{margin:18px 0 0;font-size:12px;color:var(--dim)}
+/* 本文の言語が UI 言語と異なる旨の告知（ja/en 表示時のみ出す） */
+.lang-note{margin:14px 0 0;padding:8px 13px;font-size:12.5px;line-height:1.7;color:var(--dim);
+  background:var(--panel2);border-left:3px solid var(--accent);border-radius:0 8px 8px 0;max-width:72ch}
+@media(max-width:760px){
+  .hero{padding:24px 20px;border-radius:14px}
+  .hero h1{font-size:26px;max-width:none}
+  .hero-lead{font-size:14.5px}
+  .hero-stats{width:100%}
+  .hero-stat{flex:1;padding:11px 14px;text-align:center}
+  .hero-cta{flex-direction:column;align-items:stretch}
+  .hero-cta a{text-align:center}
+}
+
+/* ---- サイトフッター（会社情報・法務・マスコット導線）---- */
+.site-footer{margin-top:38px;border-top:1px solid var(--border);background:var(--panel);
+  padding:30px 22px calc(26px + env(safe-area-inset-bottom, 0px))}
+.footer-in{max-width:1180px;margin:0 auto;display:grid;
+  grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) minmax(0,1.2fr);gap:30px}
+/* R16: h4 → h2。フッターはサイト全体の区画なので h2 が妥当で、
+   これにより各画面の見出しレベルの飛び（2→4 / 1→4）が解消する。
+   margin / font-size / letter-spacing / text-transform / color / font-weight を
+   すべて明示しているので、タグを変えても見た目は変わらない。 */
+.footer-col h2{margin:0 0 10px;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);font-weight:600}
+.footer-col p{margin:0 0 8px;font-size:13px;line-height:1.75;color:var(--dim);overflow-wrap:anywhere}
+.footer-col ul{list-style:none;margin:0;padding:0}
+.footer-col li{margin:0 0 7px;font-size:13px}
+.footer-col a{color:var(--dim);transition:color .15s}
+.footer-col a:hover{color:var(--accent)}
+.footer-brand{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:700;color:var(--text);margin-bottom:10px}
+.footer-brand svg{color:var(--accent);flex:none}
+.footer-bottom{max-width:1180px;margin:24px auto 0;padding-top:18px;border-top:1px solid var(--border);
+  display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:center;
+  font-size:12px;color:var(--dim)}
+.footer-disclaimer{max-width:72ch;line-height:1.75}
+@media(max-width:900px){.footer-in{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px}}
+@media(max-width:620px){.footer-in{grid-template-columns:1fr}.site-footer{padding:24px 18px calc(22px + env(safe-area-inset-bottom, 0px))}}
+
+/* ---- マスコット導線（Wonder4ge 小屋）---- */
+.mascot-card{display:flex;align-items:center;gap:14px;margin-top:26px;background:var(--panel2);
+  border:1px solid var(--border);border-radius:12px;padding:14px 18px;max-width:72ch;
+  transition:border-color .15s}
+.mascot-card:hover{border-color:var(--accent);text-decoration:none}
+.mascot-dots{display:flex;flex:none}
+.mascot-dots i{display:block;width:15px;height:15px;border-radius:50%;
+  border:2px solid var(--panel2);margin-left:-6px}
+.mascot-dots i:first-child{margin-left:0}
+.mascot-body{min-width:0}
+.mascot-body strong{display:block;font-size:14px;color:var(--text);margin-bottom:2px}
+.mascot-body span{display:block;font-size:12.5px;color:var(--dim);line-height:1.65;overflow-wrap:anywhere}
+.mascot-card .mascot-go{flex:none;margin-left:auto;font-size:13px;color:var(--accent);white-space:nowrap}
+@media(max-width:620px){.mascot-card{flex-wrap:wrap}.mascot-card .mascot-go{margin-left:0}}
+
+/* ---- 既存バグ修正：イントロ演出の文字が球体のノードラベルと衝突して読めない ----
+   .intro-inner の背後に径方向のスクリムを敷き、文字側を最前面に上げる。 */
+#intro .intro-inner{position:relative;z-index:2}
+#intro .intro-inner::before{content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:min(168%, 980px);height:min(170%, 540px);z-index:-1;pointer-events:none;
+  /* #intro の地色 #05070f と同色で中心を不透明にし、外周へフェードさせる。
+     0.86 では球体のノードラベル（"xiaohongshu" 等）が透けてタイトルに重なって読めなかった。 */
+  background:radial-gradient(closest-side,
+    rgba(5,7,15,1) 0%, rgba(5,7,15,.985) 42%, rgba(5,7,15,.82) 66%,
+    rgba(5,7,15,.42) 84%, rgba(5,7,15,0) 100%)}
+
+/* ---- ヘッダーのセーフエリア（iPhone のノッチ / Dynamic Island）---- */
+header{padding-left:max(22px, env(safe-area-inset-left));padding-right:max(22px, env(safe-area-inset-right))}
+main{padding-bottom:0}
+
+/* ==========================================================================
+   R2 ビジュアル刷新レイヤー（2026-09-07）
+   公開ナレッジハブ（Anthropic Docs / Epoch AI / Artificial Analysis /
+   Stanford HAI AI Index / The Batch など）に共通する設計を反映：
+     1. 本物のタイプスケール（従来は 11〜34px で 20 段バラバラだった）
+     2. 読み物のフォントサイズを上げ、行間を広げる（14.5px/1.65 → 16px/1.85）
+     3. 視覚の階層を 3 段に（従来は全パネルが同じ影と重量で並んでいた）
+     4. 装飾グラデーションの多用をやめ、ヒーローと事業ライン以外から外す
+     5. 余白のリズムを 4px グリッドに揃える
+     6. 数値は必ず等幅数字（データサイトの基本）
+   既存ルールを消さず、このブロックで上書きしている（差分の追跡と復元を容易にするため）。
+   ========================================================================== */
+
+:root{
+  /* ---- タイプスケール ---- */
+  --fs-micro:11px;    /* バッジ・脚注 */
+  --fs-cap:12px;      /* メタ情報・チップ */
+  --fs-sm:13px;       /* テーブルセル・密なリスト */
+  --fs-ui:14.5px;     /* UI 既定 */
+  --fs-read:16px;     /* 読み物本文 */
+  --fs-h4:15.5px;     /* パネル見出し */
+  --fs-h3:18px;
+  --fs-h2:22px;
+  --fs-h1:clamp(30px, 3.2vw, 40px);
+  /* ---- 行間 ---- */
+  --lh-tight:1.3; --lh-snug:1.5; --lh-ui:1.7; --lh-read:1.85;
+  /* ---- 余白（4px グリッド）---- */
+  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:20px;
+  --sp-6:24px; --sp-8:32px; --sp-10:40px; --sp-14:56px;
+  /* ---- 角丸（従来 6/7/8/9/10/12/14/16 が混在していたので 3 段に集約）---- */
+  --r-sm:8px; --r-md:12px; --r-lg:16px;
+  /* ---- 影（枠線が主役。影は最上位ブロックだけ）---- */
+  --sh-1:0 1px 2px rgba(28,26,60,.04);
+  --sh-2:0 1px 3px rgba(28,26,60,.05), 0 10px 30px -14px rgba(28,26,60,.10);
+  /* ---- フォント ----
+     重要：従来は body{font:15px/1.65 "Segoe UI","Microsoft YaHei",...} だった。
+     Segoe UI は仮名・漢字を持たないため、日本語が「Microsoft YaHei（簡体中国語フォント）」
+     に落ち、日本語の漢字が中国語字形で描かれていた（直・骨・今 等は日中で字形が異なる）。
+     日本の顧客向けサイトとして即座に気づかれる品質欠陥なので、
+     ラテン用フォントを先頭・言語別の CJK フォントを後続に置く構成へ変更する。 */
+  --f-ui:ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  --f-ja:"Hiragino Kaku Gothic ProN", "Hiragino Sans", "BIZ UDPGothic", "Yu Gothic UI", "Yu Gothic", "Noto Sans JP", Meiryo;
+  --f-zh:"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans SC";
+  --f-ko:"Apple SD Gothic Neo", Pretendard, "Malgun Gothic", "Noto Sans KR";
+  --f-mono:ui-monospace, SFMono-Regular, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+}
+html[data-theme="dark"]{
+  --sh-1:0 1px 2px rgba(0,0,0,.4);
+  --sh-2:0 1px 3px rgba(0,0,0,.45), 0 12px 32px -14px rgba(0,0,0,.6);
+}
+/* R2 コントラスト修正：ライトテーマの --dim が #6c7280 だったため、
+   --panel2（#f2f0ea）の上に 11〜12px で載ると 4.23:1 しか出ず、WCAG AA の
+   小さい文字の基準 4.5:1 を下回っていた（統計ラベル・脚注・言語告知が該当）。
+   #5f6470 に落として panel2 上 5.28:1 / 白地 6.0:1 を確保する。 */
+:root{ --dim:#5f6470 }
+
+/* 言語ごとの CJK フォント。ナレッジ本文は現在中国語なので、
+   ラテン系 UI 言語（en/es/fr）でも CJK フォールバックは中国語フォントを先に置く。 */
+body{font-family:var(--f-ui), var(--f-ja), var(--f-zh), sans-serif;
+  font-size:var(--fs-ui); line-height:var(--lh-ui);
+  letter-spacing:normal;              /* 従来の letter-spacing:.1px は CJK の字間を崩すため解除 */
+  -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility}
+html[lang="zh"] body{font-family:var(--f-ui), var(--f-zh), sans-serif}
+html[lang="ko"] body{font-family:var(--f-ui), var(--f-ko), var(--f-zh), sans-serif}
+html[lang="en"] body, html[lang="es"] body, html[lang="fr"] body, html[lang="de"] body{
+  font-family:var(--f-ui), var(--f-zh), var(--f-ja), sans-serif}
+code, kbd, pre, .num, .mono{font-family:var(--f-mono)}
+/* データサイトの基本：数値は等幅数字で桁を揃える */
+.num, .stat .v, .hero-stat .hv, .krow .r, td.num, .infobox dd, .bcard-hv, .tl-imp{
+  font-variant-numeric:tabular-nums}
+
+/* ---- 見出しのトラッキング：大きなラテン見出しだけ詰める（CJK は詰めない）---- */
+h1, h2, h3{line-height:var(--lh-tight); text-wrap:balance}
+html[lang="en"] h1, html[lang="es"] h1, html[lang="fr"] h1, html[lang="de"] h1{letter-spacing:-.021em}
+html[lang="en"] h2, html[lang="es"] h2, html[lang="fr"] h2, html[lang="de"] h2{letter-spacing:-.014em}
+
+/* ==== 1. 視覚の階層を 3 段にする ====
+   従来：.panel 全部に影 → すべてが同じ重さで並び、目の置き場所が無かった。
+   R2：ヒーローだけ影 2、既定パネルは枠線のみ（影なし）、強調したいものに .panel--raised。 */
+.panel{box-shadow:none; border-radius:var(--r-md);
+  padding:var(--sp-5) var(--sp-5) var(--sp-5); margin-bottom:var(--sp-5)}
+.panel--raised{box-shadow:var(--sh-2)}
+.panel h3{font-size:var(--fs-h4); font-weight:650; letter-spacing:normal;
+  margin:0 0 var(--sp-3); gap:var(--sp-2); line-height:var(--lh-snug)}
+.panel h3 .chip, .panel h2.sec-h .chip{font-weight:400}
+.hero{box-shadow:var(--sh-2)}
+/* カード類の装飾グラデーション線を外す（ヒーローと事業ラインタイルにのみ残す）。
+   1 画面に 10 本以上の 3px グラデーション線が走っていて、視覚的な騒音になっていた。 */
+.bcard::before, .sig-card::before{display:none}
+.bcard, .sig-card{box-shadow:none}
+.bcard{border-radius:var(--r-md); padding:var(--sp-4) var(--sp-4); gap:var(--sp-2)}
+.bcard:hover, .sig-card:hover{box-shadow:var(--sh-1); transform:none}
+.sig-card{border-radius:var(--r-md); padding:var(--sp-4) var(--sp-5)}
+.lane-tile{box-shadow:none; border-radius:var(--r-md)}
+.lane-tile:hover{box-shadow:var(--sh-1); transform:none}
+.stats, .banner, .infobox, .top5 .v{box-shadow:none}
+
+/* ==== 2. 読み物のタイポグラフィ ====
+   参照した各サイトは本文 16〜17px / 行間 1.75〜1.9。従来は 14.5px / 1.65 で
+   「ダッシュボードの密度」だった。 */
+.detail{border-radius:var(--r-lg); box-shadow:var(--sh-1);
+  padding:var(--sp-8) calc(var(--sp-8) + var(--sp-2)); line-height:var(--lh-read)}
+.detail p, .detail li{font-size:var(--fs-read); line-height:var(--lh-read); max-width:68ch}
+.detail h1{font-size:var(--fs-h2); line-height:var(--lh-tight); margin:0 0 var(--sp-4)}
+.detail h2{font-size:var(--fs-h3); margin-top:var(--sp-8); margin-bottom:var(--sp-3)}
+.detail h3{font-size:var(--fs-h4); margin-top:var(--sp-6)}
+.detail code{font-size:.88em; padding:2px 6px}
+.detail blockquote{font-size:var(--fs-ui); padding:var(--sp-3) var(--sp-4); margin:var(--sp-4) 0}
+.detail table{margin:var(--sp-4) 0}
+#mdbody p, #mdbody li, .concl li{max-width:68ch}
+@media(max-width:760px){
+  .detail{padding:var(--sp-5) var(--sp-4); border-radius:var(--r-md)}
+  .detail p, .detail li{font-size:15.5px}
+}
+
+/* ==== 3. 余白のリズム ==== */
+main{padding:var(--sp-6) var(--sp-6) var(--sp-8);
+  padding-left:max(var(--sp-6), env(safe-area-inset-left));
+  padding-right:max(var(--sp-6), env(safe-area-inset-right))}
+.grid2, .grid3{gap:var(--sp-5)}
+.cgrid{gap:var(--sp-3)}
+.bgrid{gap:var(--sp-4)}
+.lane-grid{gap:var(--sp-4)}
+.sig-grid{gap:var(--sp-4)}
+.cols{gap:var(--sp-5)}
+@media(max-width:760px){ main{padding:var(--sp-4) var(--sp-4) var(--sp-6)} }
+
+/* ==== 4. ヘッダーとナビ ==== */
+header{padding-top:var(--sp-3); padding-bottom:var(--sp-3); gap:var(--sp-3);
+  box-shadow:none; border-bottom:1px solid var(--border)}
+header .logo{font-size:16.5px; font-weight:680; letter-spacing:-.01em; gap:var(--sp-2)}
+nav button{font-size:var(--fs-ui); font-weight:500; padding:var(--sp-3) var(--sp-4) 10px}
+nav button.on{font-weight:640}
+#q{font-size:var(--fs-sm); padding:9px var(--sp-3); border-radius:var(--r-sm); min-height:38px}
+#theme-btn, #intro-btn, #print-btn{width:38px; height:38px; border-radius:var(--r-sm)}
+#section-nav{gap:var(--sp-2)}
+#section-nav button{font-size:var(--fs-sm); padding:6px var(--sp-4)}
+
+/* ==== 5. チップ類の統一 ====
+   .chip と .tagchip がほぼ同じ見た目で微妙に違うサイズだったので揃える。 */
+.chip, .tagchip{font-size:var(--fs-cap); padding:3px 10px; line-height:1.5}
+.tagchip{margin:0}
+.sig-src, .badges, .bcard-kw{gap:var(--sp-2)}
+.cred, .mtag, .pf{font-size:var(--fs-micro); padding:1px 7px; border-radius:5px}
+.conf-badge{font-size:var(--fs-cap); padding:2px 10px; font-weight:600}
+.btn{font-size:var(--fs-sm); padding:6px var(--sp-3); border-radius:var(--r-sm)}
+select{font-size:var(--fs-sm); padding:6px var(--sp-2); border-radius:var(--r-sm)}
+
+/* ==== 6. 表 ====
+   データ主体のサイトなので密度は保ちつつ、ヘッダを弱く・罫線を細く・
+   ゼブラをさらに薄くして数値そのものを主役にする。 */
+th, td{padding:9px var(--sp-3); font-size:var(--fs-sm); line-height:var(--lh-snug)}
+th{font-size:var(--fs-micro); font-weight:600; letter-spacing:.06em; text-transform:uppercase;
+  color:var(--dim); border-bottom:1px solid var(--edge)}
+tr:nth-child(even) td{background:rgba(127,127,127,.028)}
+tr:hover td{background:color-mix(in srgb, var(--accent) 5%, transparent)}
+.twrap{margin:var(--sp-3) 0; border:1px solid var(--border); border-radius:var(--r-sm)}
+
+/* ==== 7. 統計ブロック ====
+   従来は .stat .v にグラデーション文字クリップを掛けていた。データの数値は
+   装飾せず単色で出す方が信頼できて読みやすい（参照した各サイトも単色）。 */
+.stat .v{background:none; -webkit-background-clip:border-box; background-clip:border-box;
+  color:var(--text); -webkit-text-fill-color:var(--text);
+  font-size:var(--fs-h2); font-weight:620; letter-spacing:-.015em}
+.stat .k{font-size:var(--fs-micro); letter-spacing:.02em}
+.stat{padding:var(--sp-3) var(--sp-4)}
+.stats{border-radius:var(--r-md); margin:var(--sp-3) 0 var(--sp-4)}
+
+/* ==== 8. ヒーロー ==== */
+.hero{padding:var(--sp-10) calc(var(--sp-10) + var(--sp-1)); border-radius:var(--r-lg);
+  margin-bottom:var(--sp-6)}
+.hero h1{font-size:var(--fs-h1); line-height:1.24; margin:0 0 var(--sp-4); max-width:24ch}
+.hero-badge{font-size:var(--fs-micro); letter-spacing:.16em; margin-bottom:var(--sp-4);
+  padding:4px var(--sp-3)}
+.hero-lead{font-size:var(--fs-read); line-height:var(--lh-read); max-width:62ch;
+  margin:0 0 var(--sp-6)}
+.hero-stats{margin:0 0 var(--sp-6); border-radius:var(--r-md)}
+.hero-stat{padding:var(--sp-3) var(--sp-6) var(--sp-3)}
+.hero-stat .hv{font-size:28px; font-weight:620; letter-spacing:-.02em}
+.hero-stat .hk{font-size:var(--fs-micro); letter-spacing:.02em}
+.hero-cta{gap:var(--sp-3)}
+a.btn-primary, a.btn-ghost{font-size:var(--fs-ui); padding:11px var(--sp-6); border-radius:var(--r-sm)}
+.hero-foot{font-size:var(--fs-cap); margin-top:var(--sp-5)}
+.lang-note{font-size:var(--fs-cap); line-height:var(--lh-ui); padding:10px var(--sp-4);
+  margin-top:var(--sp-4)}
+@media(max-width:760px){
+  .hero{padding:var(--sp-6) var(--sp-5)}
+  .hero h1{font-size:26px; max-width:none}
+  .hero-stat .hv{font-size:23px}
+}
+
+/* ==== 9. リスト・行 ==== */
+.krow{font-size:var(--fs-sm); padding:7px var(--sp-2); border-radius:var(--r-sm)}
+.krow .r{font-size:var(--fs-cap)}
+.list .item{padding:10px var(--sp-3); border-radius:var(--r-sm)}
+.list .t{font-size:var(--fs-sm); font-weight:600; line-height:var(--lh-snug)}
+.meta{font-size:var(--fs-cap)}
+.hubitem{font-size:var(--fs-sm); padding:7px var(--sp-2); border-radius:var(--r-sm)}
+.check{font-size:var(--fs-sm); padding:9px var(--sp-1); line-height:var(--lh-snug)}
+.footnote, .kbd, .small{font-size:var(--fs-cap); line-height:var(--lh-ui)}
+.ctxt{font-size:var(--fs-sm); line-height:var(--lh-ui)}
+.bcard-name{font-size:var(--fs-h4); font-weight:640; line-height:var(--lh-snug)}
+.bcard-meta{font-size:var(--fs-cap)}
+.bhead-title{font-size:var(--fs-h3); font-weight:660; letter-spacing:normal}
+.sig-title{font-size:var(--fs-h4); font-weight:640; line-height:var(--lh-snug)}
+.sig-desc{font-size:var(--fs-sm); line-height:var(--lh-ui)}
+.lane-tile .lane-name{font-size:var(--fs-h4); font-weight:660}
+
+/* ==== 10. 言語ドロップダウン ==== */
+#lang-dd{position:relative}
+#lang-dd-btn{display:flex; align-items:center; gap:6px; height:38px;
+  background:var(--panel2); border:1px solid var(--border); border-radius:var(--r-sm);
+  color:var(--text); font:inherit; font-size:var(--fs-sm); padding:0 10px 0 9px;
+  cursor:pointer; white-space:nowrap; transition:color .15s, border-color .15s}
+#lang-dd-btn:hover{color:var(--accent); border-color:var(--accent)}
+#lang-dd-btn > svg{width:16px; height:16px; flex:none; opacity:.75}
+#lang-dd-btn .caret{width:14px; height:14px; opacity:.6; transition:transform .18s}
+#lang-dd-btn[aria-expanded="true"] .caret{transform:rotate(180deg)}
+#lang-dd-btn[aria-expanded="true"]{color:var(--accent); border-color:var(--accent)}
+#lang-dd-list{position:absolute; right:0; top:calc(100% + 6px); z-index:80;
+  min-width:180px; margin:0; padding:var(--sp-1); list-style:none;
+  background:var(--panel); border:1px solid var(--border); border-radius:var(--r-md);
+  box-shadow:var(--sh-2)}
+#lang-dd-list [role="option"]{display:flex; align-items:center; gap:var(--sp-2);
+  padding:8px 10px; border-radius:var(--r-sm); font-size:var(--fs-sm);
+  color:var(--text); cursor:pointer; white-space:nowrap}
+#lang-dd-list [role="option"]:hover{background:var(--panel2)}
+#lang-dd-list [role="option"]:focus-visible{outline:2px solid var(--accent); outline-offset:-2px}
+#lang-dd-list [role="option"].on{color:var(--accent); font-weight:600;
+  background:color-mix(in srgb, var(--accent) 8%, transparent)}
+.lang-check{width:15px; height:15px; flex:none; display:flex; align-items:center;
+  justify-content:center; opacity:0}
+.lang-check svg{width:15px; height:15px}
+#lang-dd-list [role="option"].on .lang-check{opacity:1}
+@media(max-width:760px){ #lang-dd-list{right:auto; left:0} }
+
+/* ==== 11. フッター ==== */
+.site-footer{margin-top:var(--sp-14); padding-top:var(--sp-8)}
+.footer-col h2{font-size:var(--fs-micro); letter-spacing:.1em}
+.footer-col p, .footer-col li{font-size:var(--fs-sm); line-height:var(--lh-ui)}
+.footer-brand{font-size:var(--fs-ui); font-weight:660}
+.footer-bottom{font-size:var(--fs-cap)}
+
+/* ==== 12. 事業ラインタイル：グラデーション線はここに残す（入口の識別に効く）==== */
+.lane-tile{padding:var(--sp-4) var(--sp-4) var(--sp-4)}
+.lane-tile .footnote{margin-top:2px}
+
+/* ==== 13. フォーカスリング（キーボード操作の視認性）==== */
+:where(button, a, [tabindex], input, select):focus-visible{
+  outline:2px solid var(--accent); outline-offset:2px; border-radius:4px}
+
+/* ==== 14. 狭幅端末の詰め ====
+   390px では 5 つのタブが収まらず、ラベルが「テ／ー／マ」のように 1 文字ずつ
+   折り返して壊れて見えていた。タブバーは横スクロール（モバイル UI の定石）にする。 */
+@media(max-width:640px){
+  nav{overflow-x:auto; flex-wrap:nowrap; scrollbar-width:none; -ms-overflow-style:none;
+    scroll-snap-type:x proximity; padding-left:var(--sp-4); padding-right:var(--sp-4)}
+  nav::-webkit-scrollbar{display:none}
+  nav button{flex:none; white-space:nowrap; scroll-snap-align:start;
+    padding:10px var(--sp-3) 9px; font-size:var(--fs-sm)}
+  /* ヒーローの指標ラベルも「検証済み結／論」と割れていたので、行間を詰めて
+     2 行に収まる形へ。中央寄せのまま可読性を保つ。 */
+  .hero-stat{padding:10px var(--sp-2)}
+  .hero-stat .hk{line-height:1.35; font-size:10.5px}
+  .hero-stat .hv{font-size:21px}
+  /* ヘッダーは行数を減らす：検索欄を全幅、その他は 1 行に収める */
+  header{gap:var(--sp-2) var(--sp-2)}
+  #q{order:5; flex-basis:100%; min-width:0}
+  #st-updated{font-size:var(--fs-micro)}
+  #lang-dd-btn span:not(.caret){max-width:8ch; overflow:hidden; text-overflow:ellipsis}
+  .site-footer{margin-top:var(--sp-8)}
+}
+
+/* ==========================================================================
+   R5 ビジュアル再設計（2026-09-07）
+   R2 は「公開ナレッジハブの定石」を記憶ベースで当てたが、R5 では実際に
+   参照サイトを開いて計測し、その数値にもとづいて組み直した。
+
+   ---- 計測結果（1440px 幅、Windows / Chrome）----
+                    Artificial Analysis    Epoch AI          LMArena
+     背景            #ffffff               #ffffff           rgb(252,250,248)
+     文字            #000000               rgb(9,12,12)      rgb(46,43,41)
+     h1              80px / w400 / 明朝系   46px / w600       24px / w300 / 明朝系
+     本文            16px/24               16px              16px、小字 12/18
+     導入段落        18px/28               —                 —
+     枠線            —                     0.667px #E3E4E4   0.667px #EEEDEC
+     角丸            8 / 12px              10px              8 / 4px
+     影              カードは無し           無し              無し
+     色              データのみ             データのみ + teal  データのみ
+
+   ---- 3 サイトの合意点（R5 で採用したもの）----
+     1. ヘアライン枠線 ＋ 影ゼロ（3/3）
+     2. ほぼ白の地色に、ほぼ黒の文字（3/3）
+     3. 本文 16px、導入段落 18px（3/3）
+     4. 大きな h1、ただし字重は軽め（w300〜400。太字にしない）
+     5. 彩色はデータにだけ使う（3/3）
+     6. 角丸 8〜10px
+
+   ---- 採用しなかったもの、およびその理由 ----
+     ・見出しの明朝／セリフ化（AA と LMArena は採用）
+       → このサイトの見出しは「AI 業界の公開情報を、検証可能な結論に変える」のように
+         和欧混植になる。欧文だけセリフにすると 1 行の中で書体が割れて破綻する。
+         かつ実測で Yu Mincho / Hiragino Mincho は本機に存在せず（幅比較法で確認）、
+         比例明朝は MS PMincho / BIZ UDPMincho のみ＝点阵時代の書体で大サイズに耐えない。
+         Noto Serif JP を webfont で読むと CJK は 1〜2MB 級になり、
+         本サイトの「外部依存ゼロ」を壊す。よって sans を維持し、
+         代わりに「大サイズで字重を落とす」ことで社説的な佇まいを作る。
+     ・小さな大文字のセクションラベル（AA の "Highlights" / "UPDATE"）
+       → 日本語に大文字の概念がないため、そのまま移すと不自然になる。
+         ヒーローの英字バッジにのみ適用し、パネル見出しは通常の字送りで組む。
+   ========================================================================== */
+
+:root{
+  /* ---- 地色と文字：ほぼ白 × ほぼ黒。従来 #f7f6f2 / #212530 は
+       ベージュ寄りかつコントラストが低く、資料サイトとしては眠い印象だった ---- */
+  --bg:#FCFAF8; --panel:#FFFFFF; --panel2:#F5F2ED;
+  --border:#E8E4DE; --edge:#D8D2CA;
+  --text:#2A2724; --text2:#4F4A44; --dim:#6B645B;
+  --accent:#4F46E5; --accent2:#7C5CE0;
+  /* R11-b2: --yellow は .mtag / .conf-m / .tl-status-watch / .chip.warn で
+     「自色 12% ティントの地に自色の文字」として使われる。#A66300 では
+     その地（白に 12% 重ねた rgb(244,236,224) 相当）に対し 4.08:1 しか出ず、
+     11.5px の小さな文字で WCAG AA 4.5:1 を満たさなかった。
+     #8F5600 に落として 5.0:1 を確保する（4 箇所すべてがこれで解消）。
+     R30#15：緑 #0F8A5F も同様に足りていなかった（白地 4.36 / 背景 4.18 /
+     panel2 3.90、高信頼バッジの緑 12% 地で 3.74）。#0B7048 に落として
+     6.13 / 5.89 / 5.49 / 5.14 を確保する。dark 側（#4ADE9B）は 6.09 以上あるので触らない。 */
+  --green:#0B7048; --yellow:#8F5600; --red:#C0392B;
+  --particle:120,110,210;
+  --grad:linear-gradient(135deg,#4F46E5,#7C5CE0 55%,#C049D8);
+  /* 影は原則ゼロ。浮かせる必要があるポップオーバーだけが例外 */
+  --sh-1:none;
+  --sh-2:none;
+  --sh-pop:0 4px 12px -2px rgba(42,39,36,.10), 0 12px 32px -8px rgba(42,39,36,.12);
+  /* ---- タイプスケール（実測に合わせて本文を上げ、見出しを大きく） ---- */
+  --fs-micro:11.5px; --fs-cap:12.5px; --fs-sm:13.5px; --fs-ui:15px;
+  --fs-read:16.5px; --fs-lead:18px;
+  --fs-h4:16px; --fs-h3:20px; --fs-h2:26px;
+  --fs-h1:clamp(36px, 4.6vw, 58px);
+  --r-sm:8px; --r-md:10px; --r-lg:14px;
+}
+html[data-theme="dark"]{
+  --bg:#121110; --panel:#1A1917; --panel2:#221F1D;
+  --border:#2E2A27; --edge:#423C37;
+  --text:#EDEAE5; --text2:#C5BEB5; --dim:#9C948A;
+  --accent:#A5A0FF; --accent2:#C29BF0;
+  --green:#4ADE9B; --yellow:#F5C24B; --red:#F58B7E;
+  --particle:165,160,255;
+  --grad:linear-gradient(135deg,#A5A0FF,#C29BF0 55%,#F0A0E8);
+  --sh-1:none; --sh-2:none;
+  --sh-pop:0 4px 14px -2px rgba(0,0,0,.5), 0 16px 40px -10px rgba(0,0,0,.6);
+  scrollbar-color:#4a443e #1A1917;
+}
+
+/* 地色のグラデーションを外す。参照 3 サイトはいずれも単色の地色で、
+   装飾グラデーションは使っていない（色はデータに取っておく）。
+   基準サイズは 16px。参照 3 サイトすべてが body 16px だった（AA 16/24、Epoch 16、LMArena 16）。
+   --fs-ui（15px）は明示指定する UI 部品（ボタン・ラベル）用に残す。 */
+body{background:var(--bg); font-size:16px; line-height:1.7}
+
+/* ==== 1. 影を全面的に外し、ヘアライン枠線に置き換える ==== */
+.panel, .hero, .detail, .bcard, .sig-card, .lane-tile, .stats, .banner,
+.infobox, .top5 .v, .filters, .twrap, .gwrap canvas, .tl-card, .ccard{
+  box-shadow:none}
+.panel, .detail, .bcard, .sig-card, .lane-tile, .filters, .infobox{
+  border:1px solid var(--border)}
+.panel{border-radius:var(--r-md); padding:22px 24px; margin-bottom:20px; background:var(--panel)}
+.detail{border-radius:var(--r-md)}
+.bcard, .sig-card, .lane-tile{border-radius:var(--r-md)}
+/* ホバーは影ではなく枠線の濃度で示す（参照サイトと同じ作法） */
+.bcard:hover, .sig-card:hover, .lane-tile:hover, .ccard:hover, .top5 .v:hover{
+  border-color:var(--edge); transform:none; box-shadow:none}
+/* 装飾グラデーション線はヒーローの上端 1 本だけに絞る */
+.lane-tile::before{display:none}
+.hero::before{height:3px}
+/* ポップオーバーだけは影で浮かせる（重なりの表現に必要） */
+#lang-dd-list, #note-preview, .tooltip{box-shadow:var(--sh-pop)}
+
+/* ==== 2. タイポグラフィ ====
+   大サイズの見出しは字重を落とす。参照サイトは h1 を w300〜400 で組んでおり、
+   太字の見出しよりも資料・社説としての落ち着きが出る。 */
+.hero h1{font-size:var(--fs-h1); font-weight:500; line-height:1.18;
+  letter-spacing:-.015em; max-width:22ch; margin:0 0 20px}
+html[lang="ja"] .hero h1, html[lang="zh"] .hero h1, html[lang="ko"] .hero h1{
+  letter-spacing:-.005em; line-height:1.28}
+.hero-lead{font-size:var(--fs-lead); line-height:1.78; color:var(--text2);
+  max-width:56ch; margin:0 0 28px}
+.detail h1{font-size:var(--fs-h2); font-weight:550; line-height:1.32}
+.detail h2{font-size:var(--fs-h3); font-weight:600}
+.detail h3{font-size:var(--fs-h4); font-weight:600}
+.detail p, .detail li{font-size:var(--fs-read); line-height:1.85; max-width:66ch}
+.panel h3{font-size:var(--fs-h4); font-weight:600; color:var(--text);
+  letter-spacing:normal; margin:0 0 14px}
+.bhead-title{font-size:var(--fs-h3); font-weight:600}
+h2, h3{text-wrap:balance}
+/* 欧文の大見出しだけ字間を詰める（CJK は詰めない） */
+html[lang="en"] .hero h1, html[lang="es"] .hero h1, html[lang="fr"] .hero h1, html[lang="de"] .hero h1{letter-spacing:-.022em}
+
+/* ヒーローの英字バッジ：ここだけ小さな大文字＋字送りを使う */
+.hero-badge{font-size:var(--fs-micro); font-weight:600; letter-spacing:.18em;
+  color:var(--dim); background:transparent; border:none; padding:0;
+  margin-bottom:18px; text-transform:uppercase}
+
+/* ==== 3. データを主役にする ====
+   数値は装飾せず、字重も上げすぎない。参照サイトはいずれも大きな数値を
+   単色・中字で置き、単位とラベルを小さく添えている。 */
+.hero-stats{border:1px solid var(--border); background:var(--panel);
+  border-radius:var(--r-md); overflow:hidden; gap:0; margin:0 0 28px}
+.hero-stat{background:var(--panel); border-right:1px solid var(--border);
+  padding:16px 28px}
+.hero-stat:last-child{border-right:none}
+.hero-stat .hv{font-size:34px; font-weight:500; letter-spacing:-.02em; color:var(--text);
+  line-height:1.05}
+.hero-stat .hk{font-size:var(--fs-cap); color:var(--dim); margin-top:5px}
+.stat .v{font-size:26px; font-weight:500; letter-spacing:-.018em}
+.stat .k{font-size:var(--fs-cap)}
+.stats{border-radius:var(--r-md); border:1px solid var(--border); background:var(--border)}
+
+/* ==== 4. ヒーロー ==== */
+.hero{padding:52px 48px 46px; border-radius:var(--r-lg); margin-bottom:32px}
+.hero-cta{gap:12px}
+a.btn-primary{background:var(--text); border-color:var(--text); color:var(--bg);
+  border-radius:var(--r-sm); padding:12px 26px; font-size:var(--fs-ui); font-weight:600}
+a.btn-primary:hover{background:var(--accent); border-color:var(--accent); color:#fff; filter:none}
+html[data-theme="dark"] a.btn-primary{background:var(--text); border-color:var(--text); color:var(--bg)}
+html[data-theme="dark"] a.btn-primary:hover{background:var(--accent); border-color:var(--accent); color:#15131A}
+a.btn-ghost{border-radius:var(--r-sm); padding:12px 22px; font-size:var(--fs-ui);
+  border-color:var(--edge)}
+.hero-foot{font-size:var(--fs-cap); color:var(--dim); margin-top:22px}
+.lang-note{font-size:var(--fs-cap); background:var(--panel2); border-left:2px solid var(--edge);
+  color:var(--dim); padding:11px 15px; margin-top:18px}
+@media(max-width:760px){
+  .hero{padding:30px 22px 26px}
+  .hero h1{font-size:30px; max-width:none}
+  .hero-stat{border-right:none; border-bottom:1px solid var(--border); padding:13px 16px}
+  .hero-stat:last-child{border-bottom:none}
+  .hero-stat .hv{font-size:26px}
+}
+
+/* ==== 5. ヘッダーとナビ：罫線 1 本で仕切る ==== */
+header{background:var(--panel); border-bottom:1px solid var(--border);
+  padding-top:14px; padding-bottom:14px}
+header .logo{font-size:16px; font-weight:600; letter-spacing:-.008em}
+nav{background:color-mix(in srgb, var(--bg) 88%, transparent);
+  border-bottom:1px solid var(--border); box-shadow:none; padding-top:0}
+nav button{font-size:var(--fs-ui); font-weight:500; color:var(--dim);
+  padding:13px 15px 11px; border-bottom-width:2px}
+nav button:hover{color:var(--text)}
+nav button.on{color:var(--text); font-weight:600; border-bottom-color:var(--text)}
+#section-nav button{font-size:var(--fs-sm); padding:6px 15px; border-radius:999px}
+#section-nav button.on{background:var(--text); border-color:var(--text); color:var(--bg); font-weight:600}
+#q{background:var(--bg); border:1px solid var(--border); border-radius:var(--r-sm);
+  font-size:var(--fs-sm); min-height:38px}
+#q:focus{border-color:var(--edge); box-shadow:none}
+#theme-btn, #intro-btn, #print-btn, #lang-dd-btn{background:var(--panel); border:1px solid var(--border)}
+#theme-btn:hover, #intro-btn:hover, #print-btn:hover, #lang-dd-btn:hover{border-color:var(--edge); color:var(--text)}
+/* BUGFIX(R6-b5)：.chip の white-space:nowrap が横スクロールの根本原因だった。
+   パネル見出しの横に付くバッジは翻訳すると長くなる（fr の
+   「Issues des analyses ajoutées ces 7 derniers jours」は 288px）。
+   nowrap のままだと縮めず折り返せず、375px のビューポートを押し広げていた。
+   ja / zh / ko では同じ文字列が短いため、日本語だけの検証では見えなかった。
+   バッジは 2 行になって構わないので折り返しを許可する。 */
+.chip{background:var(--panel2); border:1px solid var(--border); color:var(--dim);
+  font-size:var(--fs-cap); padding:3px 11px; white-space:normal; min-width:0}
+.tagchip{background:transparent; border:1px solid var(--border); color:var(--dim);
+  font-size:var(--fs-cap); padding:3px 11px; white-space:normal; min-width:0}
+/* 数値や日付など、途中で折れると読めなくなるものだけ nowrap を維持する */
+.krow .r, .bcard-hv, .cred, .pf, .mtag, .conf-badge, #st-updated{white-space:nowrap}
+.tagchip.on{background:var(--text); border-color:var(--text); color:var(--bg)}
+.btn{background:var(--panel); border:1px solid var(--border); border-radius:var(--r-sm);
+  font-size:var(--fs-sm); padding:7px 14px; color:var(--text)}
+.btn:hover{border-color:var(--edge); color:var(--text); background:var(--panel2)}
+select{background:var(--panel); border:1px solid var(--border); border-radius:var(--r-sm);
+  font-size:var(--fs-sm); padding:7px 10px}
+
+/* ==== 6. 表：罫線を細く、ヘッダを静かに、数値を主役に ==== */
+table{border-collapse:collapse}
+.twrap{border:1px solid var(--border); border-radius:var(--r-sm); overflow:auto}
+th{font-size:var(--fs-micro); font-weight:600; letter-spacing:.05em; text-transform:uppercase;
+  color:var(--dim); background:var(--panel2); border-bottom:1px solid var(--border);
+  padding:10px 14px; white-space:nowrap}
+td{font-size:var(--fs-sm); padding:11px 14px; border-bottom:1px solid var(--border);
+  color:var(--text)}
+tr:nth-child(even) td{background:transparent}
+tr:hover td{background:var(--panel2)}
+tr:last-child td{border-bottom:none}
+.num{font-weight:500}
+.pf{border-radius:4px; font-size:var(--fs-micro); padding:2px 7px}
+.cred, .mtag{border-radius:4px; font-size:var(--fs-micro); padding:2px 7px;
+  background:var(--panel2); color:var(--dim)}
+.mtag{background:color-mix(in srgb, var(--yellow) 12%, transparent); color:var(--yellow)}
+
+/* ==== 7. 行・リスト ==== */
+.krow{font-size:var(--fs-sm); padding:9px 4px; border-radius:0;
+  border-bottom:1px solid var(--border)}
+.krow:hover{background:transparent; color:var(--text)}
+.krow:last-child{border-bottom:none}
+.bartrack{background:var(--panel2); height:6px; border-radius:3px; max-width:38%}
+.barfill{height:6px; border-radius:3px; background:var(--accent); opacity:.85}
+.list .item{border-radius:var(--r-sm); padding:11px 13px}
+.list .item.sel{background:var(--panel2); border-color:var(--edge)}
+.list .t{font-size:var(--fs-sm); font-weight:600}
+.hubitem{font-size:var(--fs-sm); padding:9px 4px; border-radius:0;
+  border-bottom:1px solid var(--border)}
+.hubitem:last-child{border-bottom:none}
+.hubitem:hover{background:transparent; color:var(--text)}
+.check{font-size:var(--fs-sm); border-bottom:1px solid var(--border); padding:11px 2px}
+.check:last-child{border-bottom:none}
+.footnote, .kbd, .small, .meta{font-size:var(--fs-cap); color:var(--dim)}
+.bcard{padding:18px 20px; gap:9px}
+.bcard-name{font-size:var(--fs-h4); font-weight:600; line-height:1.5}
+.bcard-meta, .bcard-kw span{font-size:var(--fs-cap)}
+.bcard-hv{font-size:var(--fs-cap); font-weight:500}
+.sig-card{padding:20px 22px}
+.sig-title{font-size:var(--fs-h4); font-weight:600; line-height:1.55}
+.sig-desc{font-size:var(--fs-sm); line-height:1.75; color:var(--dim)}
+.sig-link{font-size:var(--fs-cap); color:var(--accent)}
+.lane-tile{padding:18px 20px}
+.lane-tile .lane-name{font-size:var(--fs-h4); font-weight:600}
+.ccard{background:var(--panel); border:1px solid var(--border); border-left-width:2px;
+  border-radius:var(--r-sm); padding:13px 15px}
+.ctxt{font-size:var(--fs-sm); line-height:1.75}
+.concl{background:var(--panel2); border-left:2px solid var(--edge);
+  border-radius:0 var(--r-sm) var(--r-sm) 0; color:var(--text); font-weight:400;
+  font-size:var(--fs-sm); padding:13px 16px}
+.evcard{border-left-width:2px; border-radius:0 var(--r-sm) var(--r-sm) 0;
+  background:var(--panel2); font-size:var(--fs-sm)}
+.infobox{border-radius:var(--r-sm); font-size:var(--fs-sm)}
+.infobox dt{color:var(--dim)}
+.srclink{border-radius:999px; font-size:var(--fs-micro); background:var(--panel2);
+  border:1px solid var(--border)}
+.toc{background:transparent; border:1px solid var(--border); border-radius:var(--r-sm);
+  font-size:var(--fs-cap); padding:11px 14px}
+.detail code{background:var(--panel2); color:var(--text); border-radius:4px;
+  font-size:.86em; padding:2px 6px}
+.detail blockquote{background:var(--panel2); border-left:2px solid var(--edge);
+  border-radius:0 var(--r-sm) var(--r-sm) 0; color:var(--text2)}
+
+/* ==== 8. 余白のリズム（参照サイトは main を広く取り、左右は 20〜24px） ==== */
+main{max-width:1400px; padding:32px 24px 56px;
+  padding-left:max(24px, env(safe-area-inset-left));
+  padding-right:max(24px, env(safe-area-inset-right))}
+.grid2, .grid3{gap:20px}
+.bgrid, .lane-grid, .sig-grid{gap:16px}
+.cgrid{gap:12px}
+.cta-card{border:1px solid var(--border); border-radius:var(--r-md); box-shadow:none;
+  padding:28px 24px; background:var(--panel); margin-top:28px}
+.cta-card h3, .cta-card h2.sec-h{font-size:var(--fs-h3); font-weight:600; margin-bottom:8px}
+.cta-card .muted{font-size:var(--fs-ui); margin-bottom:18px}
+a.about-mail{background:var(--text); border-color:var(--text); color:var(--bg);
+  border-radius:var(--r-sm); padding:11px 24px; font-weight:600; font-size:var(--fs-ui)}
+a.about-mail:hover{background:var(--accent); border-color:var(--accent); color:#fff}
+.mascot-card{border-radius:var(--r-md); background:var(--panel); padding:16px 20px}
+.mascot-card:hover{border-color:var(--edge)}
+.site-footer{background:var(--panel); border-top:1px solid var(--border);
+  margin-top:64px; padding-top:36px}
+.footer-col h2{font-size:var(--fs-micro); letter-spacing:.12em; color:var(--dim)}
+.footer-col p, .footer-col li{font-size:var(--fs-sm)}
+.footer-bottom{font-size:var(--fs-cap); padding-top:22px}
+
+/* ==== 9. 背景パーティクルを弱める ====
+   参照 3 サイトに動く装飾は無い。完全に消すとブランドの気配も消えるため、
+   不透明度を落として気配だけ残す。 */
+#bgfx{opacity:.22}
+html[data-theme="dark"] #bgfx{opacity:.3}
+
+/* ==== 10. ヒーロー 2 カラム（R5）====
+   左に主張とデータ、右に「今週の注目シグナル」を罫線区切りで積む。 */
+/* R30#7：align-items:start だと右カラムが 244px 手前で終わり、区切り線も
+   途中で切れて空白が「作りかけ」に見えていた（実測 左 588px / 右 344px）。 */
+.hero-grid{display:grid; grid-template-columns:minmax(0,1fr) minmax(280px, 360px);
+  gap:48px; align-items:stretch}
+.hero-main{min-width:0}
+.hero-side{min-width:0; border-left:1px solid var(--border); padding-left:32px}
+.side-head{font-size:var(--fs-micro); font-weight:600; letter-spacing:.08em;
+  color:var(--dim); padding-bottom:12px; border-bottom:1px solid var(--border);
+  margin-bottom:2px}
+a.side-item{display:block; padding:15px 0 16px; border-bottom:1px solid var(--border);
+  color:var(--text); text-decoration:none; transition:opacity .15s}
+a.side-item:last-child{border-bottom:none}
+a.side-item:hover{text-decoration:none; opacity:.72}
+.side-tag{display:block; font-size:var(--fs-micro); font-weight:600; letter-spacing:.06em;
+  color:var(--accent); margin-bottom:5px}
+.side-title{display:block; font-size:var(--fs-sm); font-weight:600; line-height:1.55;
+  margin-bottom:4px;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
+.side-desc{display:block; font-size:var(--fs-cap); line-height:1.7; color:var(--dim);
+  overflow-wrap:anywhere;
+  display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden}
+/* R14：シグナルの補助行（テーマ ・ 更新日）。要約本文の代わりに置く。
+   1 行に収める＝クランプ不要なので .side-desc とは別クラスにしている。 */
+.side-meta{display:block; font-size:var(--fs-cap); line-height:1.6; color:var(--dim);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  font-variant-numeric:tabular-nums}
+@media(max-width:1080px){
+  .hero-grid{grid-template-columns:minmax(0,1fr); gap:28px}
+  .hero-side{border-left:none; padding-left:0; border-top:1px solid var(--border); padding-top:20px}
+}
+
+/* ==== 11. 狭幅端末（R5 の値で上書き）====
+   注意：メディアクエリは詳細度を上げないため、R2 のブロック内に書いた狭幅用の値は
+   後続の R5 の平常ルールに負ける。R5 用の狭幅指定は必ずこのブロック（R5 の末尾）に置く。 */
+@media(max-width:640px){
+  .hero{padding:26px 18px 24px; border-radius:var(--r-md)}
+  .hero h1{font-size:29px; line-height:1.34; max-width:none; margin-bottom:16px}
+  .hero-lead{font-size:15.5px; line-height:1.8; margin-bottom:22px}
+  .hero-badge{margin-bottom:14px}
+  /* 3 列のまま横並びを維持し、ラベルが「検証済み結／論」と割れないよう字を詰める */
+  .hero-stat{flex:1; text-align:center; padding:13px 8px;
+    border-right:1px solid var(--border); border-bottom:none}
+  .hero-stat:last-child{border-right:none}
+  .hero-stat .hv{font-size:24px}
+  .hero-stat .hk{font-size:10.5px; line-height:1.4}
+  .hero-cta{flex-direction:column; align-items:stretch}
+  .hero-cta a{text-align:center}
+  .panel{padding:18px 16px; margin-bottom:16px}
+  .cta-card{padding:22px 16px}
+  main{padding:20px 16px 40px}
+  .side-title{font-size:14px}
+}
+
+/* ==== 12. オープニング演出：全言語対応（R6）====
+   タイトルの字サイズを文字数（--n）に反比例させる。
+   字送りが .32em なので 1 文字の実効幅は約 1.32em。
+   画面幅の 86% に収めるには fs ≦ 86vw /(1.32 × n) ≒ 65vw / n。
+   これで語の長い言語（es「CONOCIMIENTO」/ fr「CONNAISSANCE」= 12 文字）でも
+   1 行に収まり、短い言語（zh「知识中枢」= 4 文字）は上限 72px で止まる。
+   従来は固定 clamp(42px,7.5vw,72px) で、12 文字だと確実にはみ出していた。 */
+/* セレクタは #intro を付けて ID 詳細度にしておく。
+   BUGFIX(R6-b1)：.intro-title は h2 なので、言語別の見出し字送り
+   （html[lang="de"] h2{letter-spacing:-.014em} など）に負けて
+   ドイツ語だけ字送りが負値（-1.008px）になっていた。
+   ja / zh は該当ルールが無いため無事、en / es / fr は :not() の詳細度で
+   偶然勝っていた——つまり言語によって挙動がばらついていた。 */
+/* BUGFIX(R6-b3)：flex-wrap:nowrap にしていたため、字が箱の外へあふれても
+   箱の幅は広がらず、結果としてページに横スクロールが出ていた（es/fr で 373px > 335px）。
+   vw から字サイズを逆算する方式は前提が崩れると破綻するので、
+   「はみ出したら折り返す」を許可して構造的に溢れを不可能にする。
+   実際には下の clamp で 1 行に収まるため折り返しは起きないが、
+   将来もっと長い語を入れても安全側に倒れる。 */
+#intro .intro-title{font-size:clamp(26px, calc(62vw / var(--n, 6)), 72px);
+  letter-spacing:.32em; flex-wrap:wrap; max-width:100%; overflow-wrap:anywhere}
+/* 10 文字以上（es「CONOCIMIENTO」/ fr「CONNAISSANCE」）は字送りを少し詰める */
+#intro .intro-title[style*="--n:1"]{letter-spacing:.24em}
+/* 語中の空白：文字を出さずに幅だけ確保する（韓国語「널리지 허브」用） */
+#intro .intro-title .intro-sp{display:inline-block; width:.42em; flex:none}
+/* BUGFIX(R6-b2)：文案の長い es / fr だけ 375px 幅で横スクロールが出ていた。
+   原因は .intro-inner 自身に max-width が無かったこと。#intro は flex コンテナなので
+   .intro-inner は max-content まで伸び、長い hint 文が 1 行のまま 411px になっていた。
+   子に max-width:90vw を付けても（padding 40px と二重になり）解決せず、
+   100% にすると親の幅を参照して循環するだけだった。
+   親（#intro は position:fixed; inset:0 なので幅＝ビューポート）を基準に
+   .intro-inner を 100%（box-sizing:border-box なので padding 込み）で止めるのが正しい。 */
+#intro .intro-inner{max-width:100%; width:100%}
+#intro .intro-sub{max-width:720px; margin:0 auto; line-height:1.7}
+#intro .intro-hint{max-width:640px; margin-left:auto; margin-right:auto; line-height:1.7}
+#intro #intro-enter{max-width:100%}
+/* BUGFIX(R6-b4)：狭幅で横スクロールが出る本当の原因はヘッダーの最終更新チップだった。
+   es「Actualizado el 2026-09-07」/ fr「Mis à jour le 2026-09-07」は文字列が長く、
+   .chip に white-space:nowrap が効いているため 276〜288px まで伸び、
+   ロゴと同じ行に載って header を 413px まで押し広げていた（ビューポート 375px）。
+   オープニング演出が溢れて見えたのは、#intro が position:fixed でこの
+   溢れた幅を引き継いでいたためで、演出側の不具合ではなかった。
+
+   この不具合は R2（多言語化）から存在していた。狭幅の検証を日本語だけで
+   済ませていたため見落としていた——以後、溢れ検証は全言語 × 狭幅で行う。
+
+   対処：最終更新日は「ヒーロー下部」と「フッター」にも出しているので、
+   狭幅ではヘッダーのチップを隠す。副作用としてモバイルのヘッダーも 1 行短くなる。 */
+@media(max-width:860px){
+  #st-updated{white-space:normal}          /* 中間幅では折り返しを許可 */
+  header .logo{min-width:0}
+}
+@media(max-width:640px){
+  #st-updated{display:none}                 /* 狭幅では非表示（他 2 箇所に出ている） */
+}
+
+@media(max-width:560px){
+  /* ここも #intro 付きで ID 詳細度にする（上と同じ理由） */
+  #intro .intro-title{letter-spacing:.18em}
+  #intro .intro-title[style*="--n:1"]{letter-spacing:.12em}
+  #intro .intro-badge{letter-spacing:.26em; font-size:10px; padding:5px 14px 5px 17px}
+  #intro .intro-sub{font-size:12px; letter-spacing:.06em}
+  #intro .intro-hint{font-size:10.5px; letter-spacing:.14em; text-indent:.14em}
+  #intro-enter{font-size:14px; letter-spacing:.2em; text-indent:.2em; padding:12px 30px}
+}
+
+/* ==== 13. ナレッジ一覧のヘッダー（R7）====
+   .list は幅 330px しかないため、排他選択は <select> 1 つに寄せ、
+   CSV はアイコンボタンにして幅を空ける。行の折り返しは起こらない。 */
+.note-head{padding:10px 10px; border-bottom:1px solid var(--border);
+  display:flex; flex-direction:column; gap:8px}
+.note-head-chips{display:flex; flex-wrap:wrap; gap:6px}
+.note-head-ctl{display:flex; gap:6px; align-items:center}
+.note-head-ctl select{flex:1 1 auto; min-width:0; height:34px}
+.note-head-ctl .icon-btn{flex:0 0 auto; width:34px; height:34px; padding:0;
+  display:inline-flex; align-items:center; justify-content:center}
+.note-head-ctl .icon-btn svg{width:16px; height:16px}
+
+/* ==== 14. 狭幅のナレッジ一覧（R7）====
+   BUGFIX(R7-b2)：狭幅用の .list 指定は 141 行目（@media max-width:760px）にあるが、
+   その後ろの 212 行目 `.list{width:330px;position:sticky}` と
+   302 行目 `.list{max-height:calc(100vh - 72px)}` に上書きされていた。
+   メディアクエリは詳細度を上げないため、後続の平常ルールが常に勝つ。
+   結果、375px でも一覧が 330px 幅・sticky・ほぼ全画面高になり、
+   詳細ペインへ到達しづらい状態だった。
+
+   ※ この取り違えは R5-b2 / R6-b2 と同種で、これが 3 回目。
+     根本原因はスタイルシートが base → v3 → R2 → R5 → R6/R7 と
+     4 層の上書きに育っており、初期層に書いた狭幅指定が後段に負けること。
+     恒久対策は「メディアクエリを全部シートの末尾へ集約する」リファクタで、
+     未実施（LOG の未処理事項に記載）。 */
+@media(max-width:760px){
+  #view-notes .cols{flex-direction:column}
+  #view-notes .list{width:100%; position:static; max-height:52vh; top:auto}
+  #view-notes .detail{width:100%}
+}
+
+/* ==== 15. ヘッダーロゴ＝ホームへ戻る導線（R8）====
+   <a> になったので、リンクの既定装飾（下線・アクセント色）を打ち消し、
+   代わりに「押せる」ことが伝わる控えめなホバーを与える。 */
+a.logo{color:var(--text); text-decoration:none; cursor:pointer;
+  border-radius:var(--r-sm); margin-left:-4px; padding:2px 4px;
+  transition:background .15s, color .15s}
+a.logo:hover{text-decoration:none; color:var(--text); background:var(--panel2)}
+a.logo:hover svg{color:var(--accent)}
+a.logo:active{background:var(--border)}
+a.logo:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+a.logo span{pointer-events:none}   /* テキスト側での選択ドラッグを拾わせない */
+
+/* ==========================================================================
+   R9 タイポグラフィ再調整（2026-09-07）
+   参照サイトを追加実測し、自サイトの字サイズ分布を数えたうえでの修正。
+
+   ---- 追加実測 ----
+                        本文    h1                    h2      影
+     Stanford HAI       18px    84px/w400/-0.035em    58px    無
+     The Batch          16px    36px/w600             26px    有
+     （既測）AA          16px    80px/w400/セリフ       30px    カード無
+     （既測）Epoch       16px    46px/w600             30px    無
+     （既測）LMArena     16px    24px/w300/セリフ       20px    無
+
+   ---- 自サイトの字サイズ分布（概要画面・修正前）----
+     58px … 1（hero h1）      34px … 3（指標）
+     18px … 1（hero lead）    16px … 6（パネル見出し）
+     13.5px … 19             12.5px … 49  ← 圧倒的多数
+     11.5px … 5
+
+   問題は 2 つ：
+     ① R5 で body は 16px に上げたが、実際に内容を載せている要素
+        （.krow / .footnote / .side-desc / .bcard-meta / .chip）は 12.5px のままで、
+        要素数では 12.5px が全体を支配していた。参照 4 サイトのいずれも
+        本文相当を 12.5px で組んではいない。
+     ② 58 → 34 → 18 → 16 と来て、そこから 12.5px へ一気に落ちる。
+        「セクション」に当たる階層が無く、hero の直下が
+        本文と同じ 16px の見出しの平原になっていた。
+        見出しアウトラインも H1 → H3 と H2 を飛ばしていて、構造にも表れていた。
+
+   ---- 対処 ----
+     A. 小さい方の段を一段上げる（12.5 → 13.5px、13.5 → 14px）。
+        11.5px は「本当のマイクロラベル」（アイブロウ・表ヘッダ・バッジ）だけに限定。
+     B. パネル見出しを h3 → h2.panel-title に変え、16 → 19px へ。
+        欠けていたセクション階層を埋め、同時にアウトラインの飛びも解消。
+     C. 欧文大見出しの字詰めを -0.022 → -0.032em（Stanford の -0.035em に寄せる）。
+        CJK は詰めない方針を維持。
+   ========================================================================== */
+
+:root{
+  --fs-micro:11.5px;   /* アイブロウ・表ヘッダ・バッジ（ここだけ 11.5px） */
+  --fs-cap:13.5px;     /* メタ情報・脚注・補助文（12.5 → 13.5） */
+  --fs-sm:14px;        /* 表セル・リスト行（13.5 → 14） */
+  --fs-ui:15px;
+  --fs-read:16.5px;
+  --fs-lead:18px;
+  --fs-h4:19px;        /* パネル見出し（16 → 19）＝欠けていたセクション階層 */
+  --fs-h3:20px;
+  --fs-h2:26px;
+}
+
+/* ---- B. パネル見出し（h2.panel-title）---- */
+.panel h2.panel-title{margin:0 0 14px; font-size:var(--fs-h4); font-weight:600;
+  color:var(--text); letter-spacing:normal; line-height:1.45;
+  display:flex; align-items:center; gap:9px; flex-wrap:wrap}
+.panel h2.panel-title svg{color:var(--accent); flex:none}
+.panel h2.panel-title .chip{font-weight:400; font-size:var(--fs-cap)}
+.panel h2.panel-title .muted{font-weight:400; font-size:var(--fs-cap)}
+/* 詳細ビュー内の markdown 見出し（.detail h2）とは別物なので、
+   パネル見出しの装飾（左のグラデーション棒）は継承させない */
+.panel h2.panel-title::before{content:none}
+
+/* ---- A. 小さい方の段を引き上げる ---- */
+.footnote, .kbd, .small, .meta{font-size:var(--fs-cap)}
+.krow{font-size:var(--fs-sm)}
+.krow .r{font-size:var(--fs-cap)}
+.hubitem{font-size:var(--fs-sm)}
+.check{font-size:var(--fs-sm)}
+.list .t{font-size:var(--fs-sm)}
+.ctxt{font-size:var(--fs-sm)}
+.bcard-meta, .bcard-kw span{font-size:var(--fs-cap)}
+.bcard-hv{font-size:var(--fs-cap)}
+.sig-desc{font-size:var(--fs-sm)}
+.side-title{font-size:var(--fs-sm)}
+.side-desc{font-size:var(--fs-cap)}
+.hero-stat .hk{font-size:var(--fs-cap)}
+.stat .k{font-size:var(--fs-cap)}
+.hero-foot{font-size:var(--fs-cap)}
+.lang-note{font-size:var(--fs-cap)}
+.footer-col p, .footer-col li{font-size:var(--fs-sm)}
+.footer-bottom{font-size:var(--fs-cap)}
+.chip, .tagchip{font-size:var(--fs-cap)}
+.infobox{font-size:var(--fs-sm)}
+td{font-size:var(--fs-sm)}
+.exp-result{font-size:var(--fs-sm)}
+.tl-card-body{font-size:var(--fs-read)}
+.concl{font-size:var(--fs-sm)}
+.evcard{font-size:var(--fs-sm)}
+.toc{font-size:var(--fs-cap)}
+/* 11.5px を残すのはここだけ */
+th, .hero-badge, .side-head, .footer-col h2, .cred, .mtag, .pf{font-size:var(--fs-micro)}
+
+/* ---- C. 欧文大見出しの字詰め ---- */
+html[lang="en"] .hero h1, html[lang="es"] .hero h1,
+html[lang="fr"] .hero h1, html[lang="de"] .hero h1{letter-spacing:-.032em}
+html[lang="en"] .detail h1, html[lang="es"] .detail h1,
+html[lang="fr"] .detail h1, html[lang="de"] .detail h1{letter-spacing:-.022em}
+
+/* ---- セクション間の余白を広げ、パネル群が「かたまり」として読めるようにする ---- */
+#view-overview > .grid3, #view-overview > .panel{margin-top:8px}
+#view-overview .lane-grid{margin-bottom:28px}
+
+@media(max-width:640px){
+  :root{ --fs-h4:17px }
+  .panel h2.panel-title{margin-bottom:11px}
+}
+
+/* ==== 16. トップへ戻るボタン（R10）====
+   寸法は実在サイトの一般的な作法に合わせた：48px 円形（WCAG 2.5.5 の
+   最小ターゲット 44px 以上）、端から 24px、スクロール 400px 超で出現。
+   影を使うのは、本文の上に浮くフローティング要素だからで、
+   R5 で決めた「影はポップオーバーだけ」の例外に含める。 */
+#to-top{position:fixed; z-index:70;
+  right:max(24px, env(safe-area-inset-right)); bottom:max(24px, env(safe-area-inset-bottom));
+  width:48px; height:48px; padding:0; border-radius:50%;
+  background:var(--panel); border:1px solid var(--border); box-shadow:var(--sh-pop);
+  cursor:pointer; display:flex; align-items:center; justify-content:center;
+  transition:opacity .22s ease, transform .22s ease, border-color .15s}
+#to-top[hidden]{display:none}          /* hidden 属性を確実に効かせる */
+#to-top svg{width:34px; height:34px; display:block; pointer-events:none}
+/* 出現アニメーション：.is-in が付くまでは下にずれて透明 */
+#to-top{opacity:0; transform:translateY(10px)}
+#to-top.is-in{opacity:1; transform:none}
+#to-top:hover{border-color:var(--edge); transform:translateY(-2px)}
+#to-top:active{transform:translateY(0)}
+#to-top:focus-visible{outline:2px solid var(--accent); outline-offset:3px}
+/* 頭の周りにごく薄い縁を足して、暗い背景でも輪郭が消えないようにする */
+html[data-theme="dark"] #to-top{background:var(--panel2)}
+@media(prefers-reduced-motion: reduce){
+  #to-top{transition:none}
+  #to-top.is-in{transform:none}
+}
+@media(max-width:640px){
+  #to-top{width:44px; height:44px;
+    right:max(16px, env(safe-area-inset-right)); bottom:max(16px, env(safe-area-inset-bottom))}
+  #to-top svg{width:31px; height:31px}
+}
+
+/* ==== 17. 実験の信頼度バッジ：面ではなく点で示す ==== */
+.conf-badge{background:transparent; border:1px solid var(--border); font-weight:600;
+  font-size:var(--fs-cap); padding:2px 10px; color:var(--dim)}
+.conf-h{color:var(--green); border-color:color-mix(in srgb, var(--green) 45%, transparent)}
+.conf-m{color:var(--yellow); border-color:color-mix(in srgb, var(--yellow) 45%, transparent)}
+.conf-x{color:var(--dim); border-color:var(--border)}
+
+/* ==== R16：読み上げ専用（視覚的には隠す）====
+   clip-path で潰す方式。display:none や visibility:hidden は
+   支援技術からも消えてしまうので使えない。 */
+.sr-only{position:absolute !important; width:1px; height:1px; padding:0; margin:-1px;
+  overflow:hidden; clip:rect(0 0 0 0); clip-path:inset(50%); white-space:nowrap; border:0}
+
+/* ==== 18. R15：検索結果ビュー ====
+   種類ごとに区切って上位 5 件を出し、残りは「すべて見る →」で各タブへ送る。
+   結論には行き先のタブが無いので、この場で展開できるようにしている
+   （テーマ→該当ボード→結論ウォールまで手動で辿るしかなかった状態を解消）。
+   カード類は既存の .panel / .side-item と同じ作法にそろえ、新しい見た目を作らない。 */
+.sr-head{display:flex; align-items:baseline; gap:var(--sp-3); flex-wrap:wrap;
+  margin:0 0 var(--sp-4)}
+.sr-head h1{margin:0; font-size:var(--fs-h2); font-weight:600; overflow-wrap:anywhere}
+.sr-group{margin-bottom:var(--sp-5)}
+.sr-group-head{display:flex; align-items:baseline; justify-content:space-between;
+  gap:var(--sp-3); padding-bottom:8px; margin-bottom:2px;
+  border-bottom:1px solid var(--border)}
+.sr-group-head .l{display:flex; align-items:baseline; gap:8px;
+  font-size:var(--fs-ui); font-weight:600}
+.sr-group-head .n{font-size:var(--fs-cap); font-weight:400; color:var(--dim);
+  font-variant-numeric:tabular-nums}
+a.sr-more{font-size:var(--fs-cap); white-space:nowrap}
+.sr-empty{margin:10px 0 0; font-size:var(--fs-cap); color:var(--dim)}
+a.sr-item{display:block; padding:13px 0 14px; border-bottom:1px solid var(--border);
+  color:var(--text); text-decoration:none; cursor:pointer}
+a.sr-item:last-child{border-bottom:none}
+a.sr-item:hover{text-decoration:none; opacity:.72}
+a.sr-item:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+.sr-t{display:block; font-size:var(--fs-sm); font-weight:600; line-height:1.55;
+  margin-bottom:3px; overflow-wrap:anywhere;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
+.sr-m{display:block; font-size:var(--fs-cap); line-height:1.6; color:var(--dim);
+  overflow-wrap:anywhere; font-variant-numeric:tabular-nums}
+/* 結論はカード本文が主役なのでクランプを 3 行に緩める */
+.sr-item.is-concl .sr-t{-webkit-line-clamp:3; font-weight:500}
+.sr-actions{margin:var(--sp-4) 0 0}
+@media(max-width:760px){
+  .sr-group-head{flex-direction:column; align-items:flex-start; gap:4px}
+}
+
+/* ==== R21-4：スキップリンク ====
+   通常は画面外へ出し、フォーカスが当たったときだけ左上に現れる。
+   display:none や visibility:hidden は Tab の対象から外れてしまうので使えない。 */
+.skip-link{position:absolute; left:-9999px; top:0; z-index:200;
+  background:var(--panel); color:var(--text); border:1px solid var(--accent);
+  border-radius:0 0 var(--r-sm) 0; padding:10px 16px; font-size:var(--fs-sm); font-weight:600;
+  text-decoration:none; box-shadow:var(--sh-pop)}
+.skip-link:focus{left:0}
+#main-content:focus{outline:none}        /* プログラムからの移動でリングを出さない */
+
+/* ==== R24：検索件数の折り返し ====
+   広い幅では 1 行に収めたいが、狭幅では折り返させる。
+   ヘッダーは flex-wrap なので、折り返しても行が増えるだけで崩れない。 */
+#q-count{white-space:nowrap}
+@media(max-width:640px){ #q-count{white-space:normal} }
+
+/* ==== R21-4：「/」の案内 ==== */
+#q-hint{flex:none; opacity:.72; cursor:default; user-select:none}
+@media(max-width:760px){ #q-hint{display:none} }   /* 狭幅は物理キーボードが無い */
+
+/* ==== R21-3：印刷ボタン。テーマ / 演出ボタンと同じ見た目に揃える ==== */
+#print-btn{background:var(--panel2); border:1px solid var(--border); border-radius:8px;
+  color:var(--text); width:36px; height:36px; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; transition:color .15s,border-color .15s}
+#print-btn:hover{color:var(--accent); border-color:var(--accent)}
+#print-btn svg{display:block}
+
+/* ==== R21-2：検索のヒット箇所 ====
+   地色を敷くと印刷で消える（背景を印刷しない既定）ので、下線と字重で示す。
+   forced-colors では currentColor に寄せる。 */
+mark{background:color-mix(in srgb, var(--yellow) 18%, transparent); color:inherit;
+  font-weight:640; border-radius:2px; padding:0 1px;
+  box-shadow:inset 0 -2px 0 color-mix(in srgb, var(--yellow) 55%, transparent)}
+.sr-and{margin:2px 0 10px; font-size:var(--fs-cap); color:var(--dim)}
+
+/* ==== R20-B6：狭幅でタブが 5 つ全部見えるようにする ====
+   実測（390px）：nav は scrollWidth 468 / clientWidth 390 で、5 つ目の
+   「関連分析」が右端から 46px はみ出していた。横スワイプで到達はできるが、
+   影も矢印も無いので「タブは 4 つ」と受け取られる。
+   マスクで端をぼかす手もあるが、nav は backdrop-filter 付きの sticky なので
+   合成レイヤが増えて描画が不安定になりうる。ここでは余白と字送りを詰めて
+   375〜420px なら 5 つとも収める。それより狭いときは従来どおり横スクロール
+   （@media 640px の指定）が残るので、到達性は失われない。 */
+@media(max-width:420px){
+  nav{gap:0; padding-left:var(--sp-2); padding-right:var(--sp-2)}
+  nav button{padding-left:var(--sp-2); padding-right:var(--sp-2); font-size:var(--fs-cap)}
+}
+/* R30#12：上の指定でも 320px では合計 340px（19px あふれ）で、最後の
+   「関連分析」が 3px だけ切れて見えていた。3px の欠けは「横スクロールできる」
+   ようには見えず、描画が崩れているように見える。この幅だけさらに詰めて
+   5 つとも収める（実測 324px → 294px、nav の左右 8px を含めて 302px）。 */
+@media(max-width:360px){
+  nav{padding-left:4px; padding-right:4px}
+  nav button{padding-left:5px; padding-right:5px}
+}
+
+/* ==== R20-B7：会社情報のレイアウト不均衡 ====
+   実測：コンテナ（.detail）は 1232px なのに、中身は本文 640px・表 543px・
+   CTA 621px。見出しだけ 1151px まで伸びるので、右半分が空いて
+   「途中で切れている」ように見えていた。
+   表（.infobox）の 543px は inline の max-width:72ch が原因。
+   72ch は本文の可読幅の基準で、定義リストの表に当てるものではない。
+   ページ全体を資料らしい 1 カラム幅に収め、中の要素は幅いっぱいに使わせる。 */
+#section-about .detail{max-width:820px}
+#section-about .infobox,
+#section-about .about-card,
+#section-about .mascot-card{max-width:none}
+
+/* ==== R19：印刷（用紙 / PDF 書き出し）====
+   実測（R18 の全面点検）：印刷向けの指定が 1 件も無く、そのままでは
+     ・#bgfx（position:fixed; inset:0 のキャンバス）が全ページに重なる
+     ・nav が position:sticky なので 2 ページ目以降も居座る
+     ・.list が max-height + overflow:auto なので一覧が 1 画面分しか出ない
+     ・ダークテーマのまま印刷すると白紙に明色の文字（--text:#EDEAE5）が乗って読めない
+   という 4 点が起きる。客先へ紙 / PDF で渡す想定があるため用紙向けに組み直す。
+
+   グラフや章の文字色は描画時にインラインへ焼き込まれる（R11-b5 と同じ性質）ため、
+   CSS だけではダークテーマの線色を戻せない。実際の切り替えは beforeprint で
+   light にして render() し直す（JS 側 R19）。下の palette 上書きは
+   beforeprint が発火しない環境に対する保険。 */
+@page{ margin:14mm }
+@media print{
+  html[data-theme="dark"]{
+    --bg:#FCFAF8; --panel:#FFFFFF; --panel2:#F5F2ED;
+    --border:#E8E4DE; --edge:#D8D2CA;
+    --text:#2A2724; --text2:#4F4A44; --dim:#6B645B;
+    --accent:#4F46E5; --accent2:#7C5CE0;
+    --green:#0B7048; --yellow:#8F5600; --red:#C0392B;
+    --particle:120,110,210;
+    --grad:linear-gradient(135deg,#4F46E5,#7C5CE0 55%,#C049D8);
+    --sh-1:none; --sh-2:none; --sh-pop:none;
+    color-scheme:light;
+  }
+  /* 地色は既にほぼ白（--panel:#FFFFFF / --bg:#FCFAF8）なのでインクを食わない。
+     一方でヒートバー（.bartrack / .barfill）や状態チップは「背景の色」そのものが
+     情報なので、既定の「背景を印刷しない」挙動だと数値が消える。exact を指定して
+     画面と同じ見え方で出す。 */
+  html, body{ background:#fff !important;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact }
+  body{ font-size:10.5pt; line-height:1.6 }
+
+  /* 画面専用の演出・ポップオーバー・浮きボタン */
+  #bgfx, #intro, #to-top, .tooltip, #note-preview{ display:none !important }
+
+  /* 紙では押せない操作部品。表示中のビューは h1（R16 で全 7 画面に追加）が
+     文脈を示すので、タブ列を落としても何の資料か分かる。 */
+  #q, #q-count, #q-hint, #lang-dd, #theme-btn, #intro-btn, #print-btn, .skip-link,
+  #note-period, #note-state, #copy-link,
+  nav, #section-nav, #notes-csv, #v-csv, .sr-actions{ display:none !important }
+  /* R21-2：強調は紙では影が出ないので下線だけ残す */
+  mark{ background:transparent !important; box-shadow:none !important;
+    text-decoration:underline; font-weight:700 }
+
+  /* 固定・粘着とぼかしを解く */
+  header, nav{ position:static !important; box-shadow:none !important;
+    backdrop-filter:none !important; -webkit-backdrop-filter:none !important }
+  header{ border-bottom:1px solid var(--edge); padding:0 0 8px; margin-bottom:10px }
+  main{ padding:0; max-width:none }
+
+  /* ナレッジ画面は「一覧（sticky・スクロール）＋ 本文」の 2 段組。
+     用紙では縦に並べ、一覧の高さ制限を外して全件出す。 */
+  .cols{ display:block }
+  .list{ position:static !important; width:auto !important;
+    max-height:none !important; overflow:visible !important;
+    margin-bottom:12px }
+  .detail{ padding:0 !important; border:0 !important }
+
+  /* 面の装飾を落として枠線だけ残す */
+  .panel, .hero, .detail, .bcard, .stats, .banner, .infobox,
+  .twrap, .tl-card, .ccard, .sig-card{ box-shadow:none !important }
+
+  /* 改ページ。.detail と .panel は本文が長くなりうるので中断を許し、
+     まとまりの小さい部品だけ割れないようにする。 */
+  h1, h2, h3, h4{ break-after:avoid; page-break-after:avoid }
+  .bcard, .infobox, .concl, .evcard, .stat, .sig-card, .tl-card, .ccard, tr{
+    break-inside:avoid; page-break-inside:avoid }
+  thead{ display:table-header-group }
+
+  /* 紙ではリンクを辿れない。「全結論に出典リンクつき」がこのサイトの主張なので、
+     出典（.srclink）だけ URL を併記する。本文中のリンクまで展開すると読めなくなる。 */
+  a.srclink[href^="http"]::after{ content:" <" attr(href) ">";
+    font-size:8.5pt; font-weight:400; color:var(--dim); word-break:break-all }
+  a{ color:inherit; text-decoration:underline }
+
+  /* 横スクロール前提の枠を用紙幅に収める */
+  .twrap, .gwrap{ overflow:visible !important }
+  canvas, svg, img{ max-width:100% }
+}
