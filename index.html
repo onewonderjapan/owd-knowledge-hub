@@ -269,7 +269,15 @@ select,button.btn{background:var(--panel2);color:var(--text);border:1px solid va
 /* R30#8：概要の全幅パネルだけ行長の上限が無く、「今週の新しい結論」が
    全角 121 字/行になっていた（詳細ページは 44 字で適切）。45em ＝
    全角約 45 字・半角約 80 字。 */
-#view-overview .panel > p, #view-overview .panel > ol, #view-overview .panel > ul{max-width:45em}
+#view-overview .panel > p{max-width:45em}
+/* R32#B：ol / ul は max-width で細くすると右に大きな空白が残るので段組みに。 */
+#view-overview .panel > ol, #view-overview .panel > ul{columns:42em auto; column-gap:40px}
+/* 1 段に戻る幅では列幅＝パネル幅になり行長が伸びる（実測 900px で 72 字/行）。
+   項目側にも上限をかけると、段数にかかわらず 45 字前後で揃う。
+   2 段のときは列幅（実測 563px）の方が狭いのでこの上限は効かない。 */
+#view-overview .panel > ol > li, #view-overview .panel > ul > li{break-inside:avoid; max-width:45em}
+/* 紙面では列をまたぐと読み順が崩れるので 1 段に戻す。 */
+@media print{ #view-overview .panel > ol, #view-overview .panel > ul{columns:1} }
 
 svg.chart{width:100%;height:auto;display:block}
 svg.chart text{fill:var(--dim);font-size:11px}
@@ -1634,7 +1642,7 @@ mark{background:color-mix(in srgb, var(--yellow) 18%, transparent); color:inheri
   /* 紙では押せない操作部品。表示中のビューは h1（R16 で全 7 画面に追加）が
      文脈を示すので、タブ列を落としても何の資料か分かる。 */
   #q, #q-count, #q-hint, #lang-dd, #theme-btn, #intro-btn, #print-btn, .skip-link,
-  #note-period, #copy-link,
+  #note-period, #note-state, #copy-link,
   nav, #section-nav, #notes-csv, #v-csv, .sr-actions{ display:none !important }
   /* R21-2：強調は紙では影が出ないので下線だけ残す */
   mark{ background:transparent !important; box-shadow:none !important;
@@ -2070,7 +2078,7 @@ ja:{
  hero_badge:'KNOWLEDGE HUB',
  hero_h1:'AI 業界の公開情報を、検証可能な結論に変える',
  hero_lead:'OneWonder ナレッジハブは、AI モデル・価格・プラットフォーム動向の公開情報を継続的に追跡し、自社 AI ラボで再現性を確認したうえで結論として公開しています。出典が特定できたものには出典リンクを、実験レポートには信頼度を付けています。',
- st_notes:'分析ナレッジ', st_concl:'検証済み結論', st_exp:'実験レポート',
+ st_notes:'分析ナレッジ', st_concl:'結論', st_exp:'実験レポート',
  cta_contact:'お問い合わせ', cta_method:'調査手法を見る',
  hero_foot:'最終更新 {d} ・ 出典リンクつき {s} 件 ・ 継続更新',
  lang_note:'※ UI は日本語表示ですが、ナレッジ本文と結論は現在おもに中国語で提供されています。日本語本文は順次追加予定です。',
@@ -2192,7 +2200,7 @@ en:{
  hero_badge:'KNOWLEDGE HUB',
  hero_h1:'Turning public AI information into verifiable conclusions',
  hero_lead:'OneWonder Knowledge Hub continuously tracks public information on AI models, pricing and platform trends, validates it in our own AI lab, and publishes the conclusions. Source links are given where the source could be identified, and experiment reports carry a confidence rating.',
- st_notes:'Analyses', st_concl:'Verified conclusions', st_exp:'Experiment reports',
+ st_notes:'Analyses', st_concl:'Conclusions', st_exp:'Experiment reports',
  cta_contact:'Contact us', cta_method:'See our methodology',
  hero_foot:'Updated {d} · {s} entries with source links · Updated continuously',
  lang_note:'Note: the interface is in English, but knowledge entries and conclusions are currently provided mainly in Chinese. English content is being added progressively.',
@@ -2298,7 +2306,7 @@ zh:{
  hero_badge:'KNOWLEDGE HUB',
  hero_h1:'把 AI 行业的公开信息，变成可验证的结论',
  hero_lead:'OneWonder 知识中枢持续跟踪 AI 模型、价格与平台动态的公开信息，在自有 AI 实验室确认可复现后公开结论。能够确认来源的均附来源链接，实验报告标注可信度。',
- st_notes:'分析笔记', st_concl:'已验证结论', st_exp:'实验报告',
+ st_notes:'分析笔记', st_concl:'结论', st_exp:'实验报告',
  cta_contact:'联系我们', cta_method:'查看调研方法',
  hero_foot:'最后更新 {d} · 附来源链接 {s} 条 · 持续更新',
  lang_note:'',
@@ -2408,7 +2416,7 @@ ko:{
  hero_badge:'KNOWLEDGE HUB',
  hero_h1:'AI 업계의 공개 정보를 검증 가능한 결론으로',
  hero_lead:'OneWonder 널리지 허브는 AI 모델·가격·플랫폼 동향의 공개 정보를 지속적으로 추적하고, 자사 AI 랩에서 재현성을 확인한 뒤 결론으로 공개합니다. 출처를 확인할 수 있는 항목에는 출처 링크를, 실험 리포트에는 신뢰도를 표기합니다.',
- st_notes:'분석 지식', st_concl:'검증된 결론', st_exp:'실험 리포트',
+ st_notes:'분석 지식', st_concl:'결론', st_exp:'실험 리포트',
  cta_contact:'문의하기', cta_method:'조사 방법 보기',
  hero_foot:'최종 업데이트 {d} · 출처 링크 있음 {s}건 · 지속 업데이트',
  lang_note:'※ UI 는 한국어로 표시되지만, 지식 본문과 결론은 현재 주로 중국어로 제공됩니다. 한국어 본문은 순차적으로 추가될 예정입니다.',
@@ -2514,7 +2522,7 @@ es:{
  hero_badge:'KNOWLEDGE HUB',
  hero_h1:'Convertimos la información pública sobre IA en conclusiones verificables',
  hero_lead:'OneWonder Knowledge Hub rastrea de forma continua la información pública sobre modelos de IA, precios y tendencias de plataformas, la valida en nuestro propio laboratorio de IA y publica las conclusiones. Incluimos enlaces a las fuentes cuando se han podido identificar, y los informes de experimentos llevan un nivel de confianza.',
- st_notes:'Análisis', st_concl:'Conclusiones verificadas', st_exp:'Informes de experimentos',
+ st_notes:'Análisis', st_concl:'Conclusiones', st_exp:'Informes de experimentos',
  cta_contact:'Contáctanos', cta_method:'Ver nuestra metodología',
  hero_foot:'Actualizado el {d} · {s} con enlaces a las fuentes · Actualización continua',
  lang_note:'Nota: la interfaz está en español, pero las entradas de conocimiento y las conclusiones se ofrecen actualmente sobre todo en chino. El contenido en español se irá añadiendo progresivamente.',
@@ -2620,7 +2628,7 @@ fr:{
  hero_badge:'KNOWLEDGE HUB',
  hero_h1:'Transformer l’information publique sur l’IA en conclusions vérifiables',
  hero_lead:'OneWonder Knowledge Hub suit en continu l’information publique sur les modèles d’IA, les tarifs et les tendances des plateformes, la valide dans son propre laboratoire IA, puis publie les conclusions. Les sources sont indiquées lorsqu’elles ont pu être identifiées, et les rapports d’expérience portent un niveau de confiance.',
- st_notes:'Analyses', st_concl:'Conclusions vérifiées', st_exp:'Rapports d’expérience',
+ st_notes:'Analyses', st_concl:'Conclusions', st_exp:'Rapports d’expérience',
  cta_contact:'Nous contacter', cta_method:'Voir notre méthodologie',
  hero_foot:'Mis à jour le {d} · {s} avec sources citées · Mise à jour continue',
  lang_note:'Remarque : l’interface est en français, mais les analyses et les conclusions sont actuellement fournies principalement en chinois. Le contenu français sera ajouté progressivement.',
@@ -2727,7 +2735,7 @@ de:{
  hero_badge:'KNOWLEDGE HUB',
  hero_h1:'Öffentliche KI-Informationen zu überprüfbaren Erkenntnissen machen',
  hero_lead:'Der OneWonder Knowledge Hub verfolgt fortlaufend öffentlich zugängliche Informationen zu KI-Modellen, Preisen und Plattformtrends, prüft sie im eigenen KI-Labor auf Reproduzierbarkeit und veröffentlicht die Erkenntnisse. Quellenangaben stehen dort, wo die Quelle ermittelt werden konnte; Experimentberichte tragen eine Vertrauensstufe.',
- st_notes:'Analysen', st_concl:'Geprüfte Erkenntnisse', st_exp:'Versuchsberichte',
+ st_notes:'Analysen', st_concl:'Erkenntnisse', st_exp:'Versuchsberichte',
  cta_contact:'Kontakt aufnehmen', cta_method:'Unsere Methodik ansehen',
  hero_foot:'Aktualisiert am {d} · {s} mit Quellenangaben · Laufend aktualisiert',
  lang_note:'Hinweis: Die Oberfläche ist auf Deutsch, die Wissensbeiträge und Erkenntnisse liegen derzeit überwiegend auf Chinesisch vor. Deutsche Inhalte werden schrittweise ergänzt.',
@@ -3217,7 +3225,7 @@ fr:{ v_none:'Aucun enregistrement ne correspond à ces filtres. Essayez d’en a
    検索件数・結論カード・チャートの代替テキスト・digest タイムライン・
    ナレッジ詳細・目次・プレビュー・球体ラベルの件数が対象。 */
 window.KB_I18N_R11 = {
-ja:{ c_claim:'検証済み', c_nosrc:'出典：カードをクリックしてナレッジを表示（個別の出典リンクなし）',
+ja:{ c_claim:'断定', c_nosrc:'出典：カードをクリックしてナレッジを表示（個別の出典リンクなし）',
      c_nomatch:'一致する結論はありません', h_new:'新規',
      h_new_t:'期間内の活動がすべて直近のため', h_new_t2:'期間内の活動がすべて直近で、傾向が比較できません',
      ch_scatter:'散布図', ch_line:'折れ線グラフ', ch_generic:'グラフ', ch_series:'系列 {n}',
@@ -3226,7 +3234,7 @@ ja:{ c_claim:'検証済み', c_nosrc:'出典：カードをクリックしてナ
      tl_n:'{n} 件', tl_imp:'重要度', d_review_every:'{n} 日ごと',
      d_drift:'出典が変更されました', d_toc:'目次：',
      np_updated:'更新', sp_count:'{n} 件' },
-en:{ c_claim:'Verified', c_nosrc:'Source: open the card to view the entry (no separate source link)',
+en:{ c_claim:'Assertion', c_nosrc:'Source: open the card to view the entry (no separate source link)',
      c_nomatch:'No matching conclusions', h_new:'New',
      h_new_t:'All activity in the window is recent', h_new_t2:'All activity in the window is recent, so no trend is comparable',
      ch_scatter:'Scatter plot', ch_line:'Line chart', ch_generic:'Chart', ch_series:'Series {n}',
@@ -3235,7 +3243,7 @@ en:{ c_claim:'Verified', c_nosrc:'Source: open the card to view the entry (no se
      tl_n:'{n}', tl_imp:'Importance', d_review_every:'every {n} days',
      d_drift:'Source changed', d_toc:'Contents: ',
      np_updated:'Updated', sp_count:'{n}' },
-zh:{ c_claim:'已验证', c_nosrc:'出处：点击卡片查看笔记（无独立来源链接）',
+zh:{ c_claim:'断言', c_nosrc:'出处：点击卡片查看笔记（无独立来源链接）',
      c_nomatch:'无匹配结论', h_new:'新',
      h_new_t:'窗口内活动全部为近期', h_new_t2:'窗口内活动全部为近期，趋势暂不可比',
      ch_scatter:'散点图', ch_line:'折线图', ch_generic:'图表', ch_series:'系列 {n}',
@@ -3244,7 +3252,7 @@ zh:{ c_claim:'已验证', c_nosrc:'出处：点击卡片查看笔记（无独立
      tl_n:'{n} 条', tl_imp:'重要度', d_review_every:'每 {n} 天',
      d_drift:'源已变更', d_toc:'目录：',
      np_updated:'更新', sp_count:'{n} 篇' },
-ko:{ c_claim:'검증됨', c_nosrc:'출처: 카드를 클릭해 지식을 확인하세요（별도 출처 링크 없음）',
+ko:{ c_claim:'단정', c_nosrc:'출처: 카드를 클릭해 지식을 확인하세요（별도 출처 링크 없음）',
      c_nomatch:'일치하는 결론이 없습니다', h_new:'신규',
      h_new_t:'기간 내 활동이 모두 최근입니다', h_new_t2:'기간 내 활동이 모두 최근이어서 추세를 비교할 수 없습니다',
      ch_scatter:'산점도', ch_line:'꺾은선 그래프', ch_generic:'차트', ch_series:'계열 {n}',
@@ -3253,7 +3261,7 @@ ko:{ c_claim:'검증됨', c_nosrc:'출처: 카드를 클릭해 지식을 확인�
      tl_n:'{n} 건', tl_imp:'중요도', d_review_every:'{n} 일마다',
      d_drift:'출처가 변경되었습니다', d_toc:'목차: ',
      np_updated:'업데이트', sp_count:'{n} 건' },
-de:{ c_claim:'Verifiziert', c_nosrc:'Quelle: Karte öffnen, um den Beitrag zu sehen (kein separater Quellenlink)',
+de:{ c_claim:'Aussage', c_nosrc:'Quelle: Karte öffnen, um den Beitrag zu sehen (kein separater Quellenlink)',
      c_nomatch:'Keine passenden Schlussfolgerungen', h_new:'Neu',
      h_new_t:'Alle Aktivität im Zeitfenster ist aktuell', h_new_t2:'Alle Aktivität im Zeitfenster ist aktuell, ein Trend ist nicht vergleichbar',
      ch_scatter:'Streudiagramm', ch_line:'Liniendiagramm', ch_generic:'Diagramm', ch_series:'Serie {n}',
@@ -3262,7 +3270,7 @@ de:{ c_claim:'Verifiziert', c_nosrc:'Quelle: Karte öffnen, um den Beitrag zu se
      tl_n:'{n}', tl_imp:'Wichtigkeit', d_review_every:'alle {n} Tage',
      d_drift:'Quelle geändert', d_toc:'Inhalt: ',
      np_updated:'Aktualisiert', sp_count:'{n}' },
-es:{ c_claim:'Verificada', c_nosrc:'Fuente: abre la tarjeta para ver la entrada (sin enlace de fuente propio)',
+es:{ c_claim:'Afirmación', c_nosrc:'Fuente: abre la tarjeta para ver la entrada (sin enlace de fuente propio)',
      c_nomatch:'No hay conclusiones coincidentes', h_new:'Nuevo',
      h_new_t:'Toda la actividad de la ventana es reciente', h_new_t2:'Toda la actividad de la ventana es reciente, no hay tendencia comparable',
      ch_scatter:'Gráfico de dispersión', ch_line:'Gráfico de líneas', ch_generic:'Gráfico', ch_series:'Serie {n}',
@@ -3271,7 +3279,7 @@ es:{ c_claim:'Verificada', c_nosrc:'Fuente: abre la tarjeta para ver la entrada 
      tl_n:'{n}', tl_imp:'Importancia', d_review_every:'cada {n} días',
      d_drift:'La fuente ha cambiado', d_toc:'Contenido: ',
      np_updated:'Actualizado', sp_count:'{n}' },
-fr:{ c_claim:'Vérifiée', c_nosrc:'Source : ouvrez la carte pour voir l’analyse (pas de lien de source distinct)',
+fr:{ c_claim:'Affirmation', c_nosrc:'Source : ouvrez la carte pour voir l’analyse (pas de lien de source distinct)',
      c_nomatch:'Aucune conclusion correspondante', h_new:'Nouveau',
      h_new_t:'Toute l’activité de la fenêtre est récente', h_new_t2:'Toute l’activité de la fenêtre est récente, aucune tendance comparable',
      ch_scatter:'Nuage de points', ch_line:'Graphique en courbes', ch_generic:'Graphique', ch_series:'Série {n}',
@@ -3358,6 +3366,72 @@ fr:{ sr_title:'Résultats pour « {q} »', sr_total:'{n}', sr_none:'Aucun résul
      sr_from:'Source', sr_group_none:'Aucun résultat', sr_clear:'Effacer la recherche', tab_search:'Résultats' }};
 
 /* ==== R21：URL 共有・検索の AND / 強調・印刷・スキップリンク・期間絞り込み ==== */
+/* R33：ナレッジベースの状態を出すためのラベル。
+   自己進化を名乗る以上、「どれだけ溜まったか」より
+   「いま系がどういう状態か」を見せる必要がある。 */
+window.KB_I18N_R33 = {
+ja:{ kb_state:'ナレッジベースの状態', kb_verified:'検証済み', kb_overdue:'見直し期限切れ',
+     kb_orphan:'つながりなし', kb_verr:'検証エラー', kb_built:'最終ビルド {d}',
+     kb_state_d:'このナレッジベースは、検証日を持つものを「検証済み」と数えます。ナレッジごとに次の見直し日を定め、期限を過ぎたものと、他のナレッジとつながっていないものを、この場で数え続けています。' },
+en:{ kb_state:'Knowledge base health', kb_verified:'Verified', kb_overdue:'Past review date',
+     kb_orphan:'Not linked', kb_verr:'Validation errors', kb_built:'Built {d}',
+     kb_state_d:'An entry counts as verified once it carries a verification date. Each entry has a next review date, and this panel keeps count of the ones that are past it and the ones not linked to any other entry.' },
+zh:{ kb_state:'知识库状态', kb_verified:'已验证', kb_overdue:'超过复核期限',
+     kb_orphan:'无关联', kb_verr:'校验错误', kb_built:'构建于 {d}',
+     kb_state_d:'本知识库以「是否带有验证日期」判定已验证。每条笔记都设有下次复核日期，此处持续统计超期的条目与未与其他条目建立关联的条目。' },
+ko:{ kb_state:'널리지 베이스 상태', kb_verified:'검증됨', kb_overdue:'재검토 기한 초과',
+     kb_orphan:'연결 없음', kb_verr:'검증 오류', kb_built:'최종 빌드 {d}',
+     kb_state_d:'이 널리지 베이스는 검증일을 가진 것을 「검증됨」으로 셉니다. 지식마다 다음 재검토일을 두고, 기한이 지난 것과 다른 지식과 연결되지 않은 것을 이곳에서 계속 세고 있습니다.' },
+de:{ kb_state:'Zustand der Wissensbasis', kb_verified:'Verifiziert', kb_overdue:'Prüffrist überschritten',
+     kb_orphan:'Ohne Verknüpfung', kb_verr:'Prüffehler', kb_built:'Stand {d}',
+     kb_state_d:'Als verifiziert gilt ein Eintrag, sobald er ein Prüfdatum trägt. Jeder Eintrag hat ein nächstes Prüfdatum; hier wird laufend gezählt, welche Einträge überfällig sind und welche mit keinem anderen Eintrag verknüpft sind.' },
+es:{ kb_state:'Estado de la base de conocimiento', kb_verified:'Verificadas', kb_overdue:'Revisión vencida',
+     kb_orphan:'Sin enlaces', kb_verr:'Errores de validación', kb_built:'Generado el {d}',
+     kb_state_d:'Una entrada cuenta como verificada cuando lleva fecha de verificación. Cada entrada tiene una próxima fecha de revisión, y aquí se cuentan de forma continua las vencidas y las que no enlazan con ninguna otra.' },
+fr:{ kb_state:'État de la base de connaissances', kb_verified:'Vérifiées', kb_overdue:'Révision échue',
+     kb_orphan:'Sans lien', kb_verr:'Erreurs de validation', kb_built:'Généré le {d}',
+     kb_state_d:'Une analyse est comptée comme vérifiée dès qu’elle porte une date de vérification. Chaque analyse a une prochaine date de révision ; ce panneau compte en continu celles qui l’ont dépassée et celles qui ne sont liées à aucune autre.' }
+};
+/* R34：状態での絞り込みと、一覧の鮮度ドットの説明。
+   ドットはこれまで色だけで意味を伝えており（実測：title も aria-label も無し、
+   赤と緑のみ）、色覚特性のある方には区別できなかった。 */
+window.KB_I18N_R34 = {
+ja:{ ns_aria:'状態で絞り込む', ns_all:'すべての状態', ns_unverified:'未検証',
+     dot_ok:'期限内（{n} 日経過・見直しは {l} 日ごと）',
+     dot_soon:'見直しが近い（{n} 日経過・見直しは {l} 日ごと）',
+     dot_over:'見直し期限切れ（{n} 日経過・見直しは {l} 日ごと）',
+     dot_none:'{n} 日経過（見直し期限の設定なし）' },
+en:{ ns_aria:'Filter by state', ns_all:'All states', ns_unverified:'Not verified',
+     dot_ok:'Within review window ({n} days since update, review every {l} days)',
+     dot_soon:'Review due soon ({n} days since update, review every {l} days)',
+     dot_over:'Past review date ({n} days since update, review every {l} days)',
+     dot_none:'{n} days since update (no review interval set)' },
+zh:{ ns_aria:'按状态筛选', ns_all:'所有状态', ns_unverified:'未验证',
+     dot_ok:'在复核期限内（已过 {n} 天，每 {l} 天复核）',
+     dot_soon:'临近复核期限（已过 {n} 天，每 {l} 天复核）',
+     dot_over:'超过复核期限（已过 {n} 天，每 {l} 天复核）',
+     dot_none:'已过 {n} 天（未设定复核周期）' },
+ko:{ ns_aria:'상태로 필터', ns_all:'모든 상태', ns_unverified:'미검증',
+     dot_ok:'재검토 기한 내 ({n} 일 경과, {l} 일마다 재검토)',
+     dot_soon:'재검토 기한 임박 ({n} 일 경과, {l} 일마다 재검토)',
+     dot_over:'재검토 기한 초과 ({n} 일 경과, {l} 일마다 재검토)',
+     dot_none:'{n} 일 경과 (재검토 주기 미설정)' },
+de:{ ns_aria:'Nach Zustand filtern', ns_all:'Alle Zustände', ns_unverified:'Nicht verifiziert',
+     dot_ok:'Innerhalb der Prüffrist ({n} Tage seit Aktualisierung, Prüfung alle {l} Tage)',
+     dot_soon:'Prüfung steht bevor ({n} Tage seit Aktualisierung, Prüfung alle {l} Tage)',
+     dot_over:'Prüffrist überschritten ({n} Tage seit Aktualisierung, Prüfung alle {l} Tage)',
+     dot_none:'{n} Tage seit Aktualisierung (kein Prüfintervall gesetzt)' },
+es:{ ns_aria:'Filtrar por estado', ns_all:'Todos los estados', ns_unverified:'Sin verificar',
+     dot_ok:'Dentro del plazo de revisión ({n} días desde la actualización, revisión cada {l} días)',
+     dot_soon:'Revisión próxima ({n} días desde la actualización, revisión cada {l} días)',
+     dot_over:'Revisión vencida ({n} días desde la actualización, revisión cada {l} días)',
+     dot_none:'{n} días desde la actualización (sin intervalo de revisión)' },
+fr:{ ns_aria:'Filtrer par état', ns_all:'Tous les états', ns_unverified:'Non vérifiée',
+     dot_ok:'Dans le délai de révision ({n} jours depuis la mise à jour, révision tous les {l} jours)',
+     dot_soon:'Révision proche ({n} jours depuis la mise à jour, révision tous les {l} jours)',
+     dot_over:'Révision échue ({n} jours depuis la mise à jour, révision tous les {l} jours)',
+     dot_none:'{n} jours depuis la mise à jour (aucun intervalle de révision)' }
+};
 window.KB_I18N_R21 = {
 ja:{ copy_link:'リンクをコピー', copy_done:'コピーしました', copy_fail:'コピーできませんでした（URL を選択してください）',
      print_btn:'このページを印刷 / PDF に保存', skip_main:'本文へ移動',
@@ -3398,7 +3472,8 @@ fr:{ copy_link:'Copier le lien', copy_done:'Copié', copy_fail:'Copie impossible
 /* 本体辞書へマージ */
 [window.KB_I18N_CHART, window.KB_I18N_CORP, window.KB_I18N_INTRO,
  window.KB_I18N_NAV, window.KB_I18N_EMPTY, window.KB_I18N_R11,
- window.KB_I18N_R14, window.KB_I18N_R15, window.KB_I18N_R21].forEach(function(src){
+ window.KB_I18N_R14, window.KB_I18N_R15, window.KB_I18N_R21,
+ window.KB_I18N_R33, window.KB_I18N_R34].forEach(function(src){
   Object.keys(src).forEach(function(l){ Object.assign(window.KB_I18N[l], src[l]); });
 });
 
@@ -3483,6 +3558,13 @@ let DATA = null;
    恒久対策は publish-data.sh 側で出力しないこと。 */
 const BLOCK_SCOPES = ['customer-confidential', 'internal'];
 const BLOCK_TYPES = ['runbook'];
+/* R33：この KB で「検証済み」とは、検証日（verified_at）を持つことをいう。
+   status=='verified' は実測で 4 件が検証日を持たず（日付の裏づけが無い）、
+   review.unverified は公開 17 件すべてを載せるため、どちらも判定には使わない。
+   詳細画面の「検証日 / 次回見直し」と同じ軸なので、画面間で食い違わない。 */
+const isVerified = n => !!(n && n.verified_at);
+/* R33：見直し期限を過ぎているか。詳細画面の鮮度ドットと同じ材料を使う。 */
+const isOverdue = n => !!(n && n.stale_limit && (n.days || 0) > n.stale_limit);
 const isPublishable = n => !!n
   && BLOCK_SCOPES.indexOf(n.scope) < 0
   && BLOCK_TYPES.indexOf(n.type) < 0;
@@ -3681,6 +3763,9 @@ function kbLoadData(){
 }
 function kbMain(){
 const state = {tab:'overview', q:'', topic:'', tag:'', fresh:'', line:'', sel:null, entity:null, entityFrom:'', actExpand:false, conclFull:false, boardTopic:'', boardLine:'', graphMode:'entity', noteView:'list',
+  /* R34：状態（検証済み / 未検証 / 見直し期限切れ / つながりなし）での絞り込み。
+     '' なら絞らない。健全性パネルの数字を押したときもここに入る。 */
+  noteState:'',
   /* R15: 検索結果ビュー。searchFrom = 検索を始めたときのタブ（解除で戻る先）、
      srFull = 種類ごとの全件展開フラグ。 */
   searchFrom:'', srFull:{},
@@ -3855,6 +3940,16 @@ const fmtDur = s => { if(s == null) return '—';
   if(s < 3600) return Math.floor(s/60) + ':' + String(s%60).padStart(2,'0');
   return Math.floor(s/3600) + KT('u_hour') + Math.floor(s%3600/60) + KT('u_min'); };
 const dotCls = (d, lim) => { lim = lim || 30; return d <= lim/2 ? 'g' : d <= lim ? 'y' : 'r'; };
+/* R34：鮮度ドットの説明文。一覧では色しか出ておらず（実測：title も aria-label も
+   テキストも無し）、赤と緑だけで見分けさせていた。色覚特性のある方には区別できず、
+   WCAG 1.4.1「色だけで情報を伝えない」にも反する。
+   詳細画面はドットの隣に「N 日前に更新」の文字があるので、こちらは一覧用。 */
+const dotLabel = (d, lim) => {
+  const n = Number(d) || 0;
+  if(!lim) return KT('dot_none', {n});
+  const cls = dotCls(n, lim);
+  return KT(cls === 'r' ? 'dot_over' : cls === 'y' ? 'dot_soon' : 'dot_ok', {n, l: lim});
+};
 /* R1: 多言語化に伴い定数配列から関数へ変更（言語切替時に読み直す必要があるため）。
    本文は KB_I18N の ck 配列を参照する。 */
 const CHECKLIST = () => {
@@ -4671,6 +4766,65 @@ function renderSignalCards(){
    品質・手法の透明性は、対外的に意味のある形で「会社情報 → 調査手法と掲載基準」に集約した。
    これらのデータ（DATA.today / review / actions / validation / watchlist）は CDN の
    kb-data.json には引き続き含まれているため、根本的な遮断は publish-data.sh 側で行うこと。 */
+/* R33：ナレッジベースの状態パネル。
+   これまで概要は「17 件 / 24 結論 / 8 実験」という成果の棚卸しだけで、
+   同じデータが持っている「見直し期限を過ぎたもの 9 件」「つながりの無いもの 1 件」
+   「検証エラー 0 件」を一切出していなかった（実測。R31 の評価で指摘）。
+   自己進化を名乗る以上、溜まった量より系の現在の状態を見せる。
+   既存の .panel / .stats / .stat / .chip / .footnote を流用するので
+   新しい CSS は足していない。 */
+function kbHealth(){
+  const pub = pubNotes();
+  const pubIds = new Set(pub.map(n => n.id));
+  /* 公開分だけに絞る。review.* の生データには遮断ナレッジが混ざっている
+     （実測：deprecated 1 件・stale 12 件中 3 件が遮断対象）。 */
+  const onlyPub = arr => (Array.isArray(arr) ? arr : [])
+    .filter(x => pubIds.has(typeof x === 'string' ? x : (x && x.id)));
+  const rv = DATA.review || {};
+  /* 空文字だけの警告は数えない（実測で warnings は [""]）。 */
+  const real = arr => (Array.isArray(arr) ? arr : []).filter(v => {
+    if(v == null) return false;
+    if(typeof v === 'string') return v.trim() !== '';
+    return true;
+  });
+  const val = DATA.validation || {};
+  return {
+    total:    pub.length,
+    verified: pub.filter(isVerified).length,
+    /* 期限超過はナレッジ側から数え直す。review.stale は遮断混じりのうえ、
+       遮断ルールを変えても追随しないため。 */
+    overdue:  pub.filter(isOverdue).length,
+    orphans:  onlyPub(rv.orphans).length,
+    errors:   real(val.errors).length,
+    builtAt:  String(DATA.built_at || '').slice(0, 10)
+  };
+}
+function renderKbState(){
+  const h = kbHealth();
+  if(!h.total) return '';
+  /* R34：st を渡すと押せるようになり、その状態で絞った一覧へ飛ぶ。
+     件数 0 のときは押せない（飛んでも空の一覧にしかならないため）。 */
+  const stat = (v, k, st, n) => {
+    const live = st && n > 0;
+    return '<div class="stat"'
+      + (live ? ' data-kbstate="'+esc(st)+'" style="cursor:pointer" role="button" tabindex="0"'
+              + ' aria-label="'+esc(k)+' '+esc(String(v))+'"' : '')
+      + '><div class="v">'+esc(String(v))+'</div>'
+      + '<div class="k">'+esc(k)+'</div></div>';
+  };
+  return '<div class="panel">'
+    + '<h2 class="panel-title">'+esc(KT('kb_state'))
+    +   (h.builtAt ? ' <span class="chip">'+esc(KT('kb_built',{d:h.builtAt}))+'</span>' : '')
+    + '</h2>'
+    + '<div class="stats">'
+    +   stat(h.verified + ' / ' + h.total, KT('kb_verified'), 'verified', h.verified)
+    +   stat(h.overdue,  KT('kb_overdue'), 'overdue', h.overdue)
+    +   stat(h.orphans,  KT('kb_orphan'),  'orphan',  h.orphans)
+    +   stat(h.errors,   KT('kb_verr'))
+    + '</div>'
+    + '<p class="footnote" style="margin:0">'+esc(KT('kb_state_d'))+'</p>'
+    + '</div>';
+}
 function renderOverview(){
   const s = DATA.stats;
   /* R17：ここが例外を投げると renderOverview ごと止まり、
@@ -4680,6 +4834,7 @@ function renderOverview(){
      （renderHeroSide）へ移した。関数自体は残してあるので、戻したい場合は
      ここに + renderSignalCards() を復帰させ、renderHeroSide() の呼び出しを外す。 */
   $('#view-overview').innerHTML = renderHero()
+    + renderKbState()                      /* R33：系の現在の状態 */
     + renderNavTileGrid(s)
     + '<div class="grid3" style="align-items:start">'
     + '<div class="panel" style="grid-column:span 2"><h2 class="panel-title">'+esc(KT('p_heat'))+' <span class="chip">'+esc(KT('p_heat_badge'))+'</span></h2>'
@@ -4753,6 +4908,21 @@ function renderOverview(){
     state.boardLine = el.dataset.line; state.boardTopic = ''; switchTab('boards'); });
   $('#view-overview').querySelectorAll('[data-kwe]').forEach(el => el.onclick = () => {
     openEntity(el.dataset.kwe); });
+  /* R34：健全性パネルの数字 → その状態だけの一覧へ。
+     期間の絞り込みが残っていると件数が合わなくなるので併せて解除する。 */
+  $('#view-overview').querySelectorAll('[data-kbstate]').forEach(el => {
+    const go = () => {
+      state.noteState = el.dataset.kbstate;
+      state.notePeriod = '';
+      state.topic = ''; state.tag = ''; state.line = '';
+      switchTab('notes');
+      window.scrollTo({top:0});
+    };
+    el.onclick = go;
+    el.onkeydown = ev => {
+      if(ev.key === 'Enter' || ev.key === ' ' || ev.key === 'Spacebar'){ ev.preventDefault(); go(); }
+    };
+  });
   $('#view-overview').querySelectorAll('[data-board]').forEach(el => el.onclick = () => {
     state.boardTopic = el.dataset.board; state.boardLine = ''; switchTab('boards'); });
   /* R1: 「ウォッチ中キーワード」「推奨アクション」パネルを撤去したため、
@@ -4772,6 +4942,28 @@ function renderOverview(){
 }
 
 /* ---------- 笔记 ---------- */
+/* R34：review.orphans（他のナレッジと繋がっていないもの）の id 集合。
+   生データは遮断ナレッジを含みうるため公開分だけに絞る。
+   健全性パネルの件数と一覧の絞り込みが必ず同じ母数になるよう、ここに集約する。 */
+function orphanIdSet(){
+  const pubIds = new Set(pubNotes().map(n => n.id));
+  const src = (DATA.review && DATA.review.orphans) || [];
+  const s = new Set();
+  (Array.isArray(src) ? src : []).forEach(x => {
+    const id = typeof x === 'string' ? x : (x && x.id);
+    if(id && pubIds.has(id)) s.add(id);
+  });
+  return s;
+}
+/* R34：状態の判定を 1 か所に。健全性パネルも一覧もここを通す。 */
+function matchNoteState(n, st){
+  if(!st) return true;
+  if(st === 'verified')   return isVerified(n);
+  if(st === 'unverified') return !isVerified(n);
+  if(st === 'overdue')    return isOverdue(n);
+  if(st === 'orphan')     return orphanIdSet().has(n.id);
+  return true;
+}
 function filteredNotes(){
   const q = state.q.toLowerCase();
   return DATA.notes.filter(n => {
@@ -4784,6 +4976,8 @@ function filteredNotes(){
     if(state.fresh === 'r' && n.days <= (n.stale_limit||30)) return false;
     /* R21-5：更新時期での絞り込み。n.days は「最終更新からの経過日数」。 */
     if(state.notePeriod && !(Number(n.days) <= Number(state.notePeriod))) return false;
+    /* R34：状態での絞り込み。 */
+    if(state.noteState && !matchNoteState(n, state.noteState)) return false;
     if(q){
       if(!hayHit(noteHay(n), qTokens(q))) return false;       /* R20-B1 / R21-2 */
     }
@@ -4799,10 +4993,16 @@ function renderNoteList(){
   /* R21-5：更新時期の選択肢。ラベルは短く保つ（R7 の実測どおり、一覧ヘッダーは
      内寸 310px しかなく、長いラベルを並べると 7 言語すべてで折り返す）。 */
   const periods = [['', KT('np_all')],['7', KT('np_7')],['30', KT('np_30')],['90', KT('np_90')]];
+  /* R34：状態の選択肢。語は健全性パネル（kb_*）と共有し、食い違いを作らない。 */
+  const states = [['', KT('ns_all')], ['verified', KT('kb_verified')], ['unverified', KT('ns_unverified')],
+                  ['overdue', KT('kb_overdue')], ['orphan', KT('kb_orphan')]];
   const item = n => { const d = document.createElement('div');
     d.className = 'item' + (state.sel===n.id ? ' sel' : '');
     d.dataset.note = n.id; /* T-14b 悬停预览入口锚点 */
-    d.innerHTML = '<div class="t"><span class="dot '+dotCls(n.days, n.stale_limit)+'"></span>'+esc(n.title)+'</div>'
+    /* R34：ドットに読み上げ用の名前と説明を付ける（色だけで伝えない）。 */
+    const dlab = dotLabel(n.days, n.stale_limit);
+    d.innerHTML = '<div class="t"><span class="dot '+dotCls(n.days, n.stale_limit)+'" role="img"'
+      + ' title="'+esc(dlab)+'" aria-label="'+esc(dlab)+'"></span>'+esc(n.title)+'</div>'
       + '<div class="meta">'+esc(topicName(n.topic))+' · '+esc(noteType(n.type))+' · '+esc(KT('updated',{d:n.updated}))+'</div>';
     d.onclick = () => openNote(n.id);
     return d; };
@@ -4846,6 +5046,9 @@ function renderNoteList(){
     +   '<select id="note-period" aria-label="'+esc(KT('np_aria'))+'">'
     +     periods.map(([v, label]) => '<option value="' + v + '"' + (state.notePeriod === v ? ' selected' : '') + '>' + esc(label) + '</option>').join('')
     +   '</select>'
+    +   '<select id="note-state" aria-label="'+esc(KT('ns_aria'))+'">'
+    +     states.map(([v, label]) => '<option value="' + v + '"' + (state.noteState === v ? ' selected' : '') + '>' + esc(label) + '</option>').join('')
+    +   '</select>'
     +   '<button class="btn icon-btn" id="notes-csv" title="'+exportLabel+'" aria-label="'+exportLabel+'">'
     +     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
     +     '<path d="M12 3v11m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>'
@@ -4888,6 +5091,9 @@ function renderNoteList(){
   /* R21-5：更新時期の絞り込み。選び直したら一覧を作り直す。 */
   const np = $('#note-period');
   if(np) np.onchange = e => { state.notePeriod = e.target.value; renderNoteList(); };
+  /* R34：状態での絞り込み。 */
+  const nst = $('#note-state');
+  if(nst) nst.onchange = e => { state.noteState = e.target.value; renderNoteList(); };
   $('#notes-csv').onclick = () => exportNotesCSV(ns);
 }
 function exportNotesCSV(ns){
@@ -5558,9 +5764,18 @@ function graphToggle(setOpen){
   const cv = $('#graph-canvas'); const btn = $('#graph-toggle');
   const open = setOpen != null ? setOpen : cv.style.display === 'none';
   cv.style.display = open ? 'block' : 'none';
-  btn.textContent = KT(open ? 'g_close' : 'g_open');
   window.lsSet('kb_graph_open', open ? '1' : '0');
+  syncGraphToggleLabel();
   if(open) drawGraph(null);
+}
+/* R32#A：開閉ボタンのラベルは canvas の実際の状態から必ず作る。
+   マークアップ側は data-i18n="g_open" 固定なので applyI18N が走るたびに
+   「開く」へ戻る。呼ぶべき場所が 3 つ（graphToggle / renderHub / 起動直後）
+   あるので、式を 1 か所にまとめて取りこぼしを防ぐ。 */
+function syncGraphToggleLabel(){
+  const cv = $('#graph-canvas'), btn = $('#graph-toggle');
+  if(!cv || !btn) return;
+  btn.textContent = KT(cv.style.display === 'none' ? 'g_open' : 'g_close');
 }
 function renderHub(){
   const wh = Object.entries(DATA.watchlist).filter(([,ids])=>ids.length)
@@ -5580,7 +5795,7 @@ function renderHub(){
      （モード切替ボタンで R1 に直したのと同じ性質）。
      renderHub は言語切替でも render() 経由で applyI18N の後に走るため、
      ここで貼り直せば両方の経路で正しくなる。 */
-  $('#graph-toggle').textContent = KT($('#graph-canvas').style.display === 'none' ? 'g_open' : 'g_close');
+  syncGraphToggleLabel();                  /* R32#A：式は 1 か所にまとめた */
   $('#graph-toggle').onclick = () => graphToggle();
   $('#graph-mode').onclick = () => {
     state.graphMode = state.graphMode === 'entity' ? 'notes' : 'entity';
@@ -5620,6 +5835,7 @@ function renderHub(){
 function goHome(){
   /* 絞り込み・検索 */
   state.q = ''; state.topic = ''; state.tag = ''; state.fresh = ''; state.line = '';
+  state.noteState = '';                     /* R34 */
   const q = $('#q');
   if(q) q.value = '';
   updateQCount('');
@@ -6690,6 +6906,10 @@ applyRoute();
 /* R1: 静的マークアップの多言語適用と言語切替・フッター導線の結線。
    renderSectionNav() の後に呼ぶこと（ヘッダーのセクションナビも適用対象に含めるため）。 */
 window.applyI18N();
+/* R32#A：applyI18N は data-i18n から静的な文言に戻すため、状態に追随する
+   ラベルはこの後で貼り直す。初回表示だけ「開いているのに『開く』」に
+   なっていたのはこれが無かったため。 */
+syncGraphToggleLabel();
 syncDocMeta();
 bindLangSwitch();
 bindFooterNav();
