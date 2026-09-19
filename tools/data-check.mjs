@@ -1,25 +1,29 @@
 /**
  * data-check — 配信中の kb-data.json に内部データが残っていないかを機械的に確かめる
  *
- * 背景（PR #1 の指摘 3）：
- *   「页面侧过滤只是安全网，根治在 publish-data.sh。
- *     合并前请确认当前 CDN 产物已不含内部字段」
- *
- *   この「確認」を人の口約束にすると、(1) レビュアーが検証できない
+ * 背景：
+ *   ページ側の遮断は安全網にすぎず、根治はデータ生成側にある。
+ *   その「直っていること」を人の口約束にすると、(1) レビュアーが検証できない
  *   (2) 次にデータを再発行したとき黙って元に戻る、の 2 つで必ず破綻する。
  *   そこで確認そのものを再実行可能な検査にする。
+ *   data-side filtering applies; see private ops repo for policy.
  *
  * 方針：
  *   - 依存パッケージを入れない（Node の標準機能だけ）
  *   - **判定規則は app.data.js から読み込む**。ページ側の遮断定義と二重に持つと、
  *     片方だけ直したときに検査が嘘をつく
  *   - **URL も index.html から読む**。ページが実際に取りに行く先を検査する
+ *   - **社内語彙は公開ソースに持たない**。環境変数 KHUB_INTERNAL_WORDS（JSON 配列）
+ *     または tools/internal-words.local.json から読む。与えられなければ
+ *     語ベースの検査だけを警告付きで飛ばす（構造的な検査は常に走る）
+ *   - 検出しても語そのものは出力しない。CI のログは公開されるので、番号と件数で示す
  *   - ここはデータ側の検査。リポジトリの静的検査は pr-check.mjs が見る
  *
  * 使い方：
  *   node tools/data-check.mjs                  … index.html の配信先を検査
  *   node tools/data-check.mjs --url <URL>      … 任意の URL
  *   node tools/data-check.mjs --file <PATH>    … 手元の JSON（ネットワーク不要）
+ *   KHUB_INTERNAL_WORDS='["…"]' node tools/data-check.mjs   … 語彙を環境から渡す
  *
  *   内部データが残っていれば exit 1。
  *
@@ -27,7 +31,6 @@
  *   この検査が緑になっても「公開して良いか」の判断そのものは人の仕事。
  *   ここが見るのは「出さないと決めたものが出ていないか」だけ。
  */
-
 import { readFileSync, existsSync } from 'node:fs';
 import vm from 'node:vm';
 import https from 'node:https';
@@ -40,8 +43,41 @@ const fail = (m) => fails.push(m);
 const warn = (m) => warns.push(m);
 const info = (m) => notes_.push(m);
 
-/* 先頭 n 件だけ出す。100 件並べても読めないし、直す側は 1 件見れば同じ */
-const few = (arr, n = 4) => arr.slice(0, n).join(' / ') + (arr.length > n ? ` …他 ${arr.length - n} 件` : '');
+/* ============================================================================
+   0. 社内語彙（遮断語リスト）の読み込み
+
+   語そのものは公開リポジトリに置かない。次の順で探し、どちらも無ければ
+   語ベースの検査だけを飛ばす（scope / type による構造的な検査は常に走る）。
+     1) 環境変数 KHUB_INTERNAL_WORDS … 文字列の JSON 配列。CI では secrets から注入
+     2) tools/internal-words.local.json … 手元用。.gitignore 済み
+   社内呼称・内部タスク名・社内スクリプトのパスなど、いずれもただの文字列として
+   同じ配列に並べる。形式は tools/internal-words.example.json を参照。
+   ========================================================================== */
+const WORDS_FILE = 'tools/internal-words.local.json';
+const parseWords = (text, src) => {
+  let v;
+  try { v = JSON.parse(text); }
+  catch (e) { console.error(`${src} を JSON として読めません: ${e.message}`); process.exit(2); }
+  const list = Array.isArray(v) ? v : (v && Array.isArray(v.words) ? v.words : null);
+  if (!list) {
+    console.error(`${src} は文字列の JSON 配列（または {"words": [...]}）である必要があります。`);
+    process.exit(2);
+  }
+  return list.filter(w => typeof w === 'string' && w.trim() !== '').map(w => w.trim());
+};
+let INTERNAL_WORDS = [];
+let wordsFrom = null;
+if ((process.env.KHUB_INTERNAL_WORDS || '').trim()) {
+  wordsFrom = '環境変数 KHUB_INTERNAL_WORDS';
+  INTERNAL_WORDS = parseWords(process.env.KHUB_INTERNAL_WORDS, wordsFrom);
+} else if (existsSync(WORDS_FILE)) {
+  wordsFrom = WORDS_FILE;
+  INTERNAL_WORDS = parseWords(readFileSync(WORDS_FILE, 'utf8'), wordsFrom);
+}
+/* 出力に語そのものを載せない。CI のログは公開されるので番号で示す。 */
+const wordRef = (w) => `語彙 #${INTERNAL_WORDS.indexOf(w) + 1}`;
+const NO_WORDS = '社内語彙が渡されていないため語ベースの検査を飛ばした'
+  + '（KHUB_INTERNAL_WORDS または tools/internal-words.local.json を用意すること）';
 
 /* ============================================================================
    1. 判定規則を app.data.js から取り出す
@@ -62,7 +98,7 @@ try {
     '(function(window){' + src +
     '\nreturn {BLOCK_SCOPES, BLOCK_TYPES, isPublishable, KB_SCRUB, KB_SCRUB_BODY, KB_SCRUB_ANY};})'
   ).runInNewContext({});
-  RULES = fn({});
+  RULES = fn({ KB_INTERNAL_WORDS: INTERNAL_WORDS });
 } catch (e) {
   console.error(`${DATA_JS} から判定規則を読めません: ${e.message}`);
   console.error('（名前を変えた場合はこの検査も直してください。二重管理を避けるためここで落としています）');
@@ -70,6 +106,8 @@ try {
 }
 const { BLOCK_SCOPES, BLOCK_TYPES, isPublishable } = RULES;
 info(`判定規則は ${DATA_JS} から読み込み（遮断 scope: ${BLOCK_SCOPES.join(', ')} / type: ${BLOCK_TYPES.join(', ')}）`);
+if (wordsFrom) info(`社内語彙 ${INTERNAL_WORDS.length} 語を ${wordsFrom} から読み込み（語は出力しない）`);
+else warn(NO_WORDS);
 
 /* ============================================================================
    2. 取得先を決める（index.html が実際に取りに行く URL）
@@ -154,7 +192,6 @@ if (!notes.length) { console.error('notes が空です。取得先が違う可�
 const pub = notes.filter(isPublishable);
 const blocked = notes.filter(n => !isPublishable(n));
 const pubIds = new Set(pub.map(n => n.id));
-const blockedIds = new Set(blocked.map(n => n.id));
 const pubTopics = new Set(pub.map(n => n.topic).filter(Boolean));
 
 const bytes = Buffer.byteLength(raw, 'utf8');   /* raw.length は文字数。CJK は 1 文字 3 バイト */
@@ -165,15 +202,14 @@ info(`built_at ${D.built_at || '不明'} / ${bytes.toLocaleString()} B / notes $
 if (blocked.length) {
   const byType = {};
   blocked.forEach(n => { byType[n.type] = (byType[n.type] || 0) + 1; });
-  fail(`遮断対象のナレッジが ${blocked.length} 件入っている（${Object.entries(byType).map(([k, v]) => `${k} ${v}`).join(' / ')}）`
-     + ` — 例: ${few(blocked.map(n => n.id), 3)}`);
+  fail(`遮断対象のナレッジが ${blocked.length} 件入っている（${Object.entries(byType).map(([k, v]) => `${k} ${v}`).join(' / ')}）`);
 } else {
   ok(`遮断対象のナレッジ 0 件（公開 ${pub.length} 件のみ）`);
 }
 
 /* ------------------------------------------------- 4. 内部運用のための欄 */
-/* today.head は社内パイプラインの commit ハッシュ。公開画面では一切使わない。 */
-if (D.today && D.today.head) fail(`today.head が入っている（${String(D.today.head).slice(0, 12)}）— 社内 pipeline の commit ハッシュ`);
+/* today.head は内部運用のための欄。公開画面では一切使わない。 */
+if (D.today && D.today.head) fail('today.head が入っている — 内部運用のための欄');
 else ok('today.head なし');
 
 /* actions はページが既に使っていない。使わないものを配るのは面（めん）を広げるだけ。 */
@@ -200,43 +236,37 @@ refCheck('today.modified', D.today && D.today.modified, x => (typeof x === 'stri
 /* -------------------------------------------- 6. 分類語彙（closed 分类语汇） */
 /* boards / heat のキーは topic。公開分に 1 件も無い topic が残っていると、
    「その名前の活動が社内にある」ことだけが外から読める。
-   実測では 20 個中 10 個が公開分に存在しない語彙だった（ark-harness など）。 */
+   当たった分類名は出力しない（それ自体が社内語彙なので）。 */
 const topicLeak = (label, list) => {
   const bad = list.filter(t => t && !pubTopics.has(t));
-  if (bad.length) fail(`${label}: 公開分に存在しない分類が ${bad.length} / ${list.length} 個 — ${few(bad)}`);
+  if (bad.length) fail(`${label}: 公開分に存在しない分類が ${bad.length} / ${list.length} 個（名前は伏せる）`);
   else ok(`${label}: 分類はすべて公開分の語彙（${list.length} 個）`);
 };
 topicLeak('boards', Object.keys(D.boards || {}));
 topicLeak('heat', (Array.isArray(D.heat) ? D.heat : []).map(h => h && h.topic).filter(Boolean));
 
-/* watchlist はキー自体が監視語。社内アカウント呼称がキーになっていた（実測）。 */
-const INTERNAL_WORDS = [
-  /* 社内アカウント呼称 */ '白菜咕咕', '社畜狗',
-  /* 内部の情報収集タスク名 */ '知识波',
-];
-const wlBad = Object.keys(D.watchlist || {}).filter(k => INTERNAL_WORDS.some(w => k.includes(w)));
-if (wlBad.length) fail(`watchlist のキーに社内呼称: ${wlBad.join(' / ')}`);
-else ok(`watchlist のキーに社内呼称なし（${Object.keys(D.watchlist || {}).length} 個）`);
+/* watchlist はキー自体が監視語。社内呼称がキーに使われていないかを見る。 */
+if (INTERNAL_WORDS.length) {
+  const wlBad = Object.keys(D.watchlist || {}).filter(k => INTERNAL_WORDS.some(w => k.includes(w)));
+  if (wlBad.length) fail(`watchlist のキーに社内語彙が ${wlBad.length} 個（語は伏せる）`);
+  else ok(`watchlist のキーに社内語彙なし（${Object.keys(D.watchlist || {}).length} 個）`);
+} else {
+  warn(`watchlist キーの検査: ${NO_WORDS}`);
+}
 
 /* ------------------------------------------- 7. 公開分の本文に残る内部情報 */
-/* 遮断が完璧でも、公開する 17 件の本文に社内パスが書いてあれば同じこと。 */
-const INTERNAL_PATTERNS = [
-  ['scripts/import-intelhub.py', /scripts\/import-intelhub\.py/],
-  ['ark-harness', /ark-harness/],
-  ['orchestration/lab-backlog.md', /orchestration\/lab-backlog\.md/],
-  ['review_server', /review_server/],
-];
+/* 遮断が完璧でも、公開するナレッジの本文に社内呼称や社内パスが書いてあれば同じこと。
+   照合する語は環境から渡されたものだけで、当たった語そのものは出力しない。 */
 const pubJson = JSON.stringify(pub);
-const pathHits = INTERNAL_PATTERNS
-  .map(([label, re]) => [label, pub.filter(n => re.test(JSON.stringify(n))).length])
-  .filter(([, c]) => c > 0);
-if (pathHits.length) fail(`公開分の本文に社内パス: ${pathHits.map(([l, c]) => `${l} ${c} 件`).join(' / ')}`);
-else ok('公開分の本文に社内パスなし');
-
-/* 社内呼称。ページ側は kbScrub で消しているが、それは表示だけの話。 */
-const wordHits = INTERNAL_WORDS.map(w => [w, (pubJson.split(w).length - 1)]).filter(([, c]) => c > 0);
-if (wordHits.length) fail(`公開分に社内呼称: ${wordHits.map(([w, c]) => `${w} ${c} 箇所`).join(' / ')}`);
-else ok('公開分に社内呼称なし');
+if (INTERNAL_WORDS.length) {
+  const wordHits = INTERNAL_WORDS
+    .map(w => [wordRef(w), pubJson.split(w).length - 1])
+    .filter(([, c]) => c > 0);
+  if (wordHits.length) fail(`公開分に社内語彙: ${wordHits.map(([l, c]) => `${l} が ${c} 箇所`).join(' / ')}`);
+  else ok(`公開分に社内語彙なし（${INTERNAL_WORDS.length} 語を照合 / 出典: ${wordsFrom}）`);
+} else {
+  warn(`公開分の語彙検査: ${NO_WORDS}`);
+}
 
 /* ページ側の scrub 規則がまだ当たるなら、それは「安全網が仕事をしている」＝
    データ側が直っていないということ。規則は app.data.js から来ているので、
@@ -251,7 +281,7 @@ const scrubHits = pub.filter(n => scrubRules.some(([re]) =>
     return re.test(String(v));
   })));
 if (scrubHits.length) fail(`ページ側の除去規則がまだ ${scrubHits.length} 件のナレッジに当たる`
-  + `（例: ${few(scrubHits.map(n => n.id), 3)}）— 安全網が働いている＝データ側が未修正`);
+  + ' — 安全網が働いている＝データ側が未修正');
 else ok('ページ側の除去規則に当たる箇所なし');
 
 /* -------------------------------------------------------- 8. 配信の設定 */
@@ -281,7 +311,7 @@ console.log(`OK ${oks.length} / 警告 ${warns.length} / 失敗 ${fails.length}`
 if (fails.length) {
   console.log(`
 配信中のデータに内部情報が残っています。
-直す場所は publish-data.sh（このリポジトリには無い）で、ページ側では直せません。
+直す場所はデータ生成側（このリポジトリには無い）で、ページ側では直せません。
 ページ側の遮断は安全網として働きますが、JSON の URL を直接開けば読めます。`);
   process.exit(1);
 }

@@ -8,3 +8,7 @@ desktop.ini
 node_modules/
 dist/
 __pycache__/
+
+# 遮断語リスト（社内語彙）。公開リポジトリには入れない。
+# 形式は tools/internal-words.example.json を参照。
+tools/internal-words.local.json

@@ -9,7 +9,8 @@
      kbNormalize / kbScrub / kbScrubTree           形の正規化と社内語の除去
      kbSanitize / kbLoadData                       取得から画面へ渡すまで
 
-   注意：遮断はあくまで**安全網**で、根治は publish-data.sh 側（PR #1 指摘 3）。
+   注意：遮断はあくまで**安全網**で、根治はデータ生成側で行う。
+   data-side filtering applies; see private ops repo for policy.
    ここを緩めると非公開ナレッジが画面に出るので、変更時は必ず遮断漏れ検査を通すこと。
 
    読み込み順の決まり：app.i18n.js の後、本体の前。
@@ -18,50 +19,12 @@
    ========================================================================== */
 /* 数据加载：内嵌 payload（内部版）直接用；公开版从 CDN 拉取 kb-data.json */
 let DATA = null;
-/* R1（内部商業情報の保護 / 安全網）：顧客機密ナレッジのハードブロック。
-   従来 renderDetail は scope === 'customer-confidential' のナレッジに「客户机密」バッジを
-   付けて “そのまま表示” していた。README のレッドライン（顧客案件資料は公開リポジトリに
-   入れない）に対して、ページ側が表示してしまう作りだったため除外に変更する。
-   現行データに該当は 0 件のため、表示内容への影響はない（純粋な安全網）。
-
-   NOTE（方針＝案 C）：scope === 'internal' の 63 件は利用者判断により
-   意図的にフィルタしていない。将来これも遮断する場合は BLOCK_SCOPES に 'internal' を
-   1 語追加すれば、一覧・検索・詳細・CSV・グラフの全経路に一括で効く。
-   ただし本来の恒久対策は publish-data.sh 側で kb-data.json に出力しないこと。
-
-   R12：内部の運用手順書は対外公開物に載せない。
-   監査で type:'runbook' が 1 件（ark-harness の README、scope:internal）見つかり、
-   社内の自己学習 harness の構成と「各赛道状态与上手指南」がそのまま公開されていた。
-   scope でなく type で塞ぐのは、runbook が種類として常に社内向けだから。
-
-   R12：この判定は kbSanitize（集計値の補正）からも使うため、
-   kbMain の外＝モジュール先頭に置く。 */
-/* ==== R26①：社内資料を公開画面から外す ====
-   実測（R23〜R25 の検査）：notes 80 件のうち scope='internal' が 63 件あるのに、
-   遮断対象は 'customer-confidential'（該当 0 件）と type='runbook'（1 件）だけで、
-   **62 件がそのまま公開されていた**。公開されていたものには
-     Wonder4ge ワールドBible（世界机制正典 / SSOT）
-     Wonder4ge 成员正典卡（yaya / gaga / juju / baibai）／成员关系正典
-     面具讽刺角色正典（S / B / BP）／生成安全词汇表／世界事件时间线
-     Wonder4ge 角色资产 v2 生成规格（Codex imagen 用）  ← 画像生成の指示書
-     Season 1 方向书（2026-08-16 用户重定…）           ← 社内方針
-     canon_fact 1/15〜15/15・skill_policy 1〜3・visual_asset 1〜3
-   が含まれ、README の赤線（正典アセットの保護／公開内容だけを置く）に抵触していた。
-
-   type × scope を実測した結果：
-     canon 30・research 20・playbook 6・spec 4・decision 2・runbook 1 → すべて internal
-     digest 9・experiment 8                                          → 印なし
-   つまり type で絞る案（canon+spec+decision+playbook を遮断）では research 20 件が
-   internal のまま残り、目的を達成しない。'internal' という印はまさに
-   「社内用」を示すために付いているので、それを遮断対象にするのが筋が通る。
-
-   公開件数は 79 → 17（digest 9 + experiment 8）に減る。ヒーローの指標も
-   pubNotes() を経由しているので自動で追随する。
-
-   ⚠️ これはページ側の安全網にすぎない。CDN の kb-data.json には
-   internal 63 件の本文がそのまま入っており、JSON の URL を直接開けば読める
-   （実測：Access-Control-Allow-Origin: * / 認証なし / 200）。
-   恒久対策は publish-data.sh 側で出力しないこと。 */
+/* 公開可否は scope / type という構造的な印だけで判定する（安全網）。
+   ここを通らないナレッジは一覧・検索・詳細・CSV・グラフの全経路から外れるので、
+   遮断する印を 1 つ足すだけで全画面に一括で効く。
+   runbook を type で塞ぐのは、運用手順書が種類として常に社内向けだから。
+   これはページ側の安全網にすぎない。根治はデータ生成側で出力しないこと。
+   data-side filtering applies; see private ops repo for policy. */
 const BLOCK_SCOPES = ['customer-confidential', 'internal'];
 const BLOCK_TYPES = ['runbook'];
 /* R33：この KB で「検証済み」とは、検証日（verified_at）を持つことをいう。
@@ -74,53 +37,58 @@ const isOverdue = n => !!(n && n.stale_limit && (n.days || 0) > n.stale_limit);
 const isPublishable = n => !!n
   && BLOCK_SCOPES.indexOf(n.scope) < 0
   && BLOCK_TYPES.indexOf(n.type) < 0;
-/* R12（内部商業情報の保護）：データ側に残っている内部マーカーを、読み込んだ直後に
-   1 箇所で落とす。ここで潰せば一覧・検索・詳細・プレビュー・シグナル・CSV の
-   全経路に一括で効く（表示箇所ごとに書くと必ず取りこぼす）。
-   元の値は *_raw に残すので、後から突き合わせができる。
-   恒久対策は publish-data.sh 側で kb-data.json に出力しないこと。 */
-/* R16：本文（content）専用の規則。題名・要約とは文脈が違うので分ける。
-   R14 では題名と要約だけを対象にしていたため、本文の Markdown 見出しや
-   相互参照リンクのラベルに内部の作業管理番号が残り、画面に出ていた
-   （実測：ナレッジ詳細に「（L-15）」「知识波」が表示されていた）。 */
-const KB_SCRUB_BODY = [
-  /* R16-b1：当初は前後を \s* にしていたが、これは**改行も食う**。
-     本文の見出しは行末が「…v1（L-15）」で、その次の行が「> Summary: …」なので、
-     改行まで消えた結果 h1 と引用が 1 行に繋がり、
-     「題名 ＋ Summary 全文」という巨大な見出しになっていた（実測 4 件）。
-     行内の空白だけを対象にする（[^\S\r\n] = 改行以外の空白）。 */
-  /* 社内の作業管理番号。本文では見出しと相互参照リンクのラベルに出る */
-  [/[^\S\r\n]*[（(][^\S\r\n]*L-\d+[^\S\r\n]*[）)][^\S\r\n]*/g, ''],
-  /* 内部の情報収集タスク名。「由 Codex 定期任务（知识波 Daily Intelligence Hub）
-     每日研究产出」という形で 13 件の digest 本文に出る。
-     括弧ごと落とすと前後がそのまま繋がって文として成立する。 */
-  [/[^\S\r\n]*[（(][^\S\r\n]*知识波[^）)]{0,40}[）)][^\S\r\n]*/g, '']
+/* 内部マーカーの除去（安全網）。読み込んだ直後に 1 箇所で落とせば、
+   一覧・検索・詳細・プレビュー・シグナル・CSV の全経路に一括で効く
+   （表示箇所ごとに書くと必ず取りこぼす）。元の値は *_raw に残す。
+   data-side filtering applies; see private ops repo for policy.
+
+   除去対象の語そのものは公開ソースに持たない。必要な環境では、このスクリプトを
+   読み込む前に window.KB_INTERNAL_WORDS = ["…"] を与える
+   （形式は tools/internal-words.example.json、正本は非公開の運用リポジトリ側）。
+   何も与えなければ語ベースの規則は 0 本になり、公開可否は scope / type だけで決まる。 */
+const KB_INTERNAL_WORDS = (typeof window !== 'undefined' && Array.isArray(window.KB_INTERNAL_WORDS))
+  ? window.KB_INTERNAL_WORDS.filter(w => typeof w === 'string' && w.trim() !== '')
+  : [];
+const kbReEsc = w => String(w).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+/* 区切り記号（中黒・ハイフン・ダッシュ類） */
+const KB_SEP = '[\\u00b7\\u30fb\\-\\u2014\\u2013]';
+/* 空白の扱い：\s* は**改行も食う**ため使わない。本文の見出しは行末で終わり、
+   その次の行が続く。改行まで消すと見出しと次の行が 1 行に繋がって壊れる。
+   行内の空白だけを対象にする（[^\S\r\n] = 改行以外の空白）。 */
+const KB_SPC = '[^\\S\\r\\n]*';
+/* 括弧ごと落とす規則。前後がそのまま繋がって文として成立するので、
+   題名・要約・本文のどこに出ても当てて構わない。 */
+const kbBracketRule = w =>
+  [new RegExp(KB_SPC + '[（(]' + KB_SPC + kbReEsc(w) + '[^）)]{0,40}[）)]' + KB_SPC, 'g'), ''];
+/* 区切り記号付きの前置き・後置き。題名・要約のような短い文字列にだけ当てる
+   （長文の散文では文の主語として出ることがあり、消すと文が壊れる）。 */
+const kbEdgeRules = w => [
+  [new RegExp('^\\s*' + kbReEsc(w) + '\\s*' + KB_SEP + '\\s*', 'g'), ''],
+  [new RegExp('\\s*' + KB_SEP + '\\s*' + kbReEsc(w) + '\\s*$', 'g'), '']
 ];
-const KB_SCRUB = [
-  /* 社内の作業管理番号（L-nn）。対外的に意味が無く、ナレッジ 4 件の題名に出ていた */
-  [/\s*[（(]\s*L-\d+\s*[）)]\s*/g, ''],
-  /* 内部の情報収集タスク名と実行系の名前。digest 8 件の要約が
-     「codex 每日情报任务"知识波"的…」で始まり、社内の運用体制が読み取れていた */
-  [/^\s*codex\s*每日情报任务\s*["\u201c\u201d\u300c\u300d']*\s*知识波\s*["\u201c\u201d\u300c\u300d']*\s*的\s*/g, ''],
-  /* 社内アカウント呼称。区切り記号ごと落とす（前置き・後置きの両方に出る） */
-  [/^\s*白菜咕咕\s*[\u00b7\u30fb\-\u2014\u2013]\s*/g, ''],
-  [/\s*[\u00b7\u30fb\-\u2014\u2013]\s*白菜咕咕\s*$/g, '']
-];
+/* 構造的な規則：内部の作業管理番号は「括弧 ＋ 英字 1 文字 ＋ ハイフン ＋ 数字」
+   という形をしているので、語彙を持たずに形だけで落とせる。
+   呼ばれるたびに新しい RegExp を作るのは、g 付き正規表現が lastIndex という
+   状態を持つため（配列をまたいで共有しない）。 */
+const kbIdRule = () =>
+  [new RegExp(KB_SPC + '[（(]' + KB_SPC + '[A-Za-z]-\\d+' + KB_SPC + '[）)]' + KB_SPC, 'g'), ''];
+const kbRules = edges => KB_INTERNAL_WORDS.reduce(
+  (acc, w) => acc.concat([kbBracketRule(w)], edges ? kbEdgeRules(w) : []),
+  [kbIdRule()]
+);
+/* 本文（content）専用。長文なので、文として崩れない規則だけを当てる */
+const KB_SCRUB_BODY = kbRules(false);
+/* 題名・要約用。短い文字列なので前置き・後置きの除去まで当てる */
+const KB_SCRUB = kbRules(true);
+/* データ全体の走査用。フィールドを列挙する方式では必ず漏れる
+   （被リンク一覧・目次・グラフのノード名などにも同じ文字列が出る）ので、
+   データ全体を 1 回走査して当てる。*_raw（元値の控え）は触らない。 */
+const KB_SCRUB_ANY = kbRules(false);
 const kbScrub = v => {
   let t = String(v == null ? '' : v);
   for(const [re, to] of KB_SCRUB) t = t.replace(re, to);
   return t.trim();
 };
-/* R16：L-nn と内部タスク名は「どの文字列に出ても」落として構わない
-   （括弧ごと消えるだけで文が壊れない）。フィールドを列挙する方式では必ず漏れる
-   ——実測で backlinks[].title（14 箇所）/ toc[].text（6）/ graph.nodes[].title（6）/
-   review.unverified[].title（4）に残り、被リンク一覧として画面に出ていた。
-   データ全体を 1 回走査して当てる。*_raw（元値の控え）は触らない。 */
-const KB_SCRUB_ANY = [
-  /* R16-b1 と同じ理由で改行は食わない */
-  [/[^\S\r\n]*[（(][^\S\r\n]*L-\d+[^\S\r\n]*[）)][^\S\r\n]*/g, ''],
-  [/[^\S\r\n]*[（(][^\S\r\n]*知识波[^）)]{0,40}[）)][^\S\r\n]*/g, '']
-];
 function kbScrubTree(o, depth){
   if(depth > 6 || o == null) return o;
   if(typeof o === 'string'){
@@ -212,10 +180,8 @@ function kbSanitize(d){
       /* 空になってしまう場合は元を残す（題名が丸ごと消えるのを防ぐ） */
       if(after !== before && after !== ''){ n[f + '_raw'] = before; n[f] = after; }
     });
-    /* R16：本文も同様に。ただし本文は長文なので、文として崩れない規則だけを当てる。
-       固有名詞「白菜咕咕」は本文では文の主語や分析対象として出るため触らない
-       （公開アカウント名であり、消すと文が壊れる。題名では区切り記号ごと
-       落とせたので R14 で処理済み）。 */
+    /* 本文も同様に。ただし本文は長文なので、文として崩れない規則だけを当てる
+       （散文中では文の主語や分析対象として出る語があり、消すと文が壊れる）。 */
     if(n.content != null){
       let c = String(n.content);
       const before = c;
