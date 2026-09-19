@@ -16,29 +16,57 @@ permissions:
   id-token: write # OIDC 换取 AWS 临时凭证，仓库里不存长期密钥
   contents: read
 
+# バケット名 / ディストリビューション ID はリポジトリ変数から読む（ハードコードしない）。
+#   vars.KHUB_BUCKET             … 站点 S3 bucket 名
+#   vars.KHUB_DISTRIBUTION_ID    … CloudFront distribution ID
+#   secrets.KHUB_INTERNAL_WORDS  … 泄漏门禁用的遮断语列表（JSON 数组）
+# 未設定時の挙動は README「所需 secrets / vars」を参照。
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      - uses: aws-actions/configure-aws-credentials@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '20'
+          # 依存パッケージを入れないのでキャッシュも要らない
+
+      # 泄漏门禁：配信中の kb-data.json に内部データが残っていないかを確かめる。
+      # **アップロードより前**に置き、失敗したらデプロイ全体を止める。
+      - name: Leak gate (data-check)
+        env:
+          KHUB_INTERNAL_WORDS: ${{ secrets.KHUB_INTERNAL_WORDS }}
+        run: node tools/data-check.mjs
+
+      - uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4.3.1
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ap-northeast-1
 
       - name: Sync pages to site bucket
+        env:
+          BUCKET: ${{ vars.KHUB_BUCKET }}
         run: |
-          aws s3 cp index.html s3://onewonder-public-site/index.html --content-type "text/html; charset=utf-8"
+          if [ -z "$BUCKET" ]; then
+            echo "::error::repository variable KHUB_BUCKET is not set"; exit 1
+          fi
+          aws s3 cp index.html s3://"$BUCKET"/index.html --content-type "text/html; charset=utf-8"
           # 本体と対で動くので HTML と同じ扱い（長いキャッシュを付けない）。
           # デプロイ後に CloudFront を /* で無効化しているため、新旧が混ざることはない
-          aws s3 cp app.css     s3://onewonder-public-site/app.css     --content-type "text/css; charset=utf-8"
-          aws s3 cp app.js      s3://onewonder-public-site/app.js      --content-type "text/javascript; charset=utf-8"
-          aws s3 cp app.i18n.js s3://onewonder-public-site/app.i18n.js --content-type "text/javascript; charset=utf-8"
-          aws s3 cp app.data.js s3://onewonder-public-site/app.data.js --content-type "text/javascript; charset=utf-8"
-          aws s3 cp mascot.html s3://onewonder-public-site/mascot.html --content-type "text/html; charset=utf-8"
+          aws s3 cp app.css     s3://"$BUCKET"/app.css     --content-type "text/css; charset=utf-8"
+          aws s3 cp app.js      s3://"$BUCKET"/app.js      --content-type "text/javascript; charset=utf-8"
+          aws s3 cp app.i18n.js s3://"$BUCKET"/app.i18n.js --content-type "text/javascript; charset=utf-8"
+          aws s3 cp app.data.js s3://"$BUCKET"/app.data.js --content-type "text/javascript; charset=utf-8"
+          aws s3 cp mascot.html s3://"$BUCKET"/mascot.html --content-type "text/html; charset=utf-8"
           # OG 画像は内容が変わらないので長めにキャッシュさせる（HTML は既定どおり）
-          aws s3 cp og.png s3://onewonder-public-site/og.png --content-type "image/png" --cache-control "public, max-age=86400"
+          aws s3 cp og.png s3://"$BUCKET"/og.png --content-type "image/png" --cache-control "public, max-age=86400"
 
       - name: Invalidate CloudFront
-        run: aws cloudfront create-invalidation --distribution-id E2PSKJQMU4ZWTB --paths "/*"
+        env:
+          DISTRIBUTION_ID: ${{ vars.KHUB_DISTRIBUTION_ID }}
+        run: |
+          if [ -z "$DISTRIBUTION_ID" ]; then
+            echo "::error::repository variable KHUB_DISTRIBUTION_ID is not set"; exit 1
+          fi
+          aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" --paths "/*"

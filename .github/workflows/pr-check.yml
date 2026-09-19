@@ -4,8 +4,6 @@ name: pr-check
 # deploy.yml は `on: push / branches:[main]` のみで、PR では一度も検証されず、
 # 壊れた HTML がそのまま本番へ入り得る状態だった。
 # ここでは「本番に入ると困るもの」だけを止める（設計の良し悪しは人のレビューに任せる）。
-#
-# deploy.yml には手を入れていない。公開の挙動を変えないため。
 
 on:
   pull_request:
@@ -28,12 +26,20 @@ jobs:
   static-check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '20'
           # 依存パッケージを入れないのでキャッシュも要らない
 
       - name: 静的検証
         run: node tools/pr-check.mjs
+
+      # 泄漏门禁：配信中の kb-data.json に内部データが残っていないか。
+      # 遮断語リストは secrets.KHUB_INTERNAL_WORDS（JSON 配列）から渡す。
+      # secret が無い場合、検査は語ベースの部分だけを警告付きで飛ばす（失敗にはしない）。
+      - name: 泄漏门禁（data-check）
+        env:
+          KHUB_INTERNAL_WORDS: ${{ secrets.KHUB_INTERNAL_WORDS }}
+        run: node tools/data-check.mjs
