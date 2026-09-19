@@ -14,8 +14,8 @@
 - **仓可见性为 PUBLIC**。README 措辞与此一致，但舰队登记曾按私有仓处理，本条已按 L1 撰写。
 
 ## 发现
-1. **[P0] 页面对数据源的 `scope` 字段只做展示标记、不做过滤。** index.html:1505 仅给 `customer-confidential` 打徽章；其余 scope 值一律按普通笔记渲染。数据源中是否只含可公开条目，取决于数据生产侧脚本（`publish-data.sh`，不在本仓）。本次核对结果与处置细节见内部完整版；结论是**数据侧需要先过滤再发布**，页面侧过滤只是安全网。
-2. **[P0 关联] `feature/home-redesign` 已实现页面侧拦截**（该分支 index.html 约 3440-3496 行，`BLOCK_SCOPES` / `BLOCK_TYPES`），注释明确写「页面侧只是安全网，恒久对策在 publish-data.sh」。该分支尚未合并，线上仍是无过滤版。
+1. **[P0] 页面对数据源的 `scope` 字段只做展示标记、不做过滤。** index.html:1505 仅给 `customer-confidential` 打徽章；其余 scope 值一律按普通笔记渲染。数据源中是否只含可公开条目，取决于数据生产侧脚本（数据发布脚本（内部仓库），不在本仓）。本次核对结果与处置细节见内部完整版；结论是**数据侧需要先过滤再发布**，页面侧过滤只是安全网。
+2. **[P0 关联] `feature/home-redesign` 已实现页面侧拦截**（该分支 index.html 约 3440-3496 行，`BLOCK_SCOPES` / `BLOCK_TYPES`），注释明确写「页面侧只是安全网，恒久对策在 数据发布脚本（内部仓库）」。该分支尚未合并，线上仍是无过滤版。
 3. **[P1] deploy.yml 硬编码 S3 桶名与 CloudFront 分配 ID**（.github/workflows/deploy.yml:27-28、:31）。非机密，但仓为 PUBLIC，属可见信息。触发条件 `push.branches:[main]` + `paths:[index.html, mascot.html]`，改 deploy.yml 自身不触发部署。
 4. **[P1] 页面引用但 JSON 不存在的字段 `notes[].editor_note`**（index.html:713），用 `||{}` 兜底，「点评位」功能永远为空。
 5. **[P1] JSON 有但页面未用的字段**：顶层 `graph`（页面用 `entity_graph`）、notes 的 `entry_count` / `supersedes`、entries 的 `duration_label` / `date_label` / `category_raw`。
@@ -39,7 +39,7 @@
 
 ## 建议
 ### P0
-- 数据生产侧 `publish-data.sh` 按 scope / type 过滤后重新发布 CDN，并升 manifest 版本号。这是唯一根治点。
+- 数据生产侧 数据发布脚本（内部仓库） 按 scope / type 过滤后重新发布 CDN，并升 manifest 版本号。这是唯一根治点。
 - 在此之前尽快把 `feature/home-redesign` 的拦截段 cherry-pick 到 main 先上线止血。
 ### P1
 - deploy.yml 桶名 / 分配 ID 改 `vars.*` 或 secrets；paths 加入 deploy.yml 自身。
@@ -56,6 +56,6 @@
 - 不要把 `#kb-data` 内嵌 payload 回到单文件模式。
 
 ## 未核实
-- `publish-data.sh` 实际过滤逻辑（脚本不在本仓）。
+- 数据发布脚本（内部仓库） 实际过滤逻辑（脚本不在本仓）。
 - CDN 对 media/ 前缀的 Cache-Control。
 - GitHub Pages 镜像是否与 main 同步（仅核实 200）。

@@ -22,7 +22,7 @@
 5. 2026-09-11 分支：`main`、`grok/knowledge`、`feature/home-redesign`；`grok/knowledge` 与 `main` 同提交 `c6da622`；尚无 `grok-inbox/`。
 6. `design/` 目前仅 `README.md`，未见登记中的设计稿文件。
 7. 多 Bot 计划 §8–§9：专管本仓、分支 `grok/knowledge`、路径 `grok-inbox/`；每周 ≥1；开发 agent 只读 inbox 当建议；晋升门未决前不得 merge 公开 KB；Bot 不得把内部笔记源推进本仓、禁止直写 CDN。
-8. `push main` 经 Actions OIDC 部署 AWS；内容生产线用 `publish-data.sh` 上传 CDN。
+8. `push main` 经 Actions OIDC 部署 AWS；内容生产线用 数据发布脚本（内部仓库） 上传 CDN。
 9. 【未核实假设】`feature/home-redesign` 是否已有未合并的首页改动、以及晋升门的具体审批人，本条目未核。
 
 ## 建议开发 agent 采取的下一步
@@ -33,7 +33,7 @@
    - 本仓 PR/diff 不得新增知识正文、客户资料、内部笔记源文件。
    - 站点若要展示 KB，只引用 `https://cdn.onewonder.co.jp/data/kb-data.json`，不把 JSON 拷进本仓。
    - mascot 资源只引用 CDN `media/mascot/`；禁止提交重绘/改色图。
-   - 内容变更走既有 `publish-data.sh` 生产线，不在本仓「顺便改一笔」。
+   - 内容变更走既有 数据发布脚本（内部仓库） 生产线，不在本仓「顺便改一笔」。
 4. **`design/` 空目录卫生。** 在 `design/README.md` 明确：无登记稿时目录只保留 README；新稿必须 `YYYYMMDD-主题-vN`，由设计负责人放入；S1 不得把未登记草稿、内部笔记、KB 正文丢进 `design/`。当前仅 README 视为卫生合格，不要为「看起来空」而塞占位文件。
 5. **与 `feature/home-redesign` 的边界。** 首页结构改动留在该功能分支，由设计负责人 + S1 处理；知识 Bot / inbox 不把首页视觉当 KB 内容来改。【未核实假设】若该分支已有设计稿，应先按命名规范登记进 `design/`，再改站点文件。
 
@@ -41,7 +41,7 @@
 
 - 不要 `git push origin main`，不要绕过 Actions OIDC 直接部署。
 - 不要把内部笔记源文件、客户资料、KB JSON、mascot 原图推进本仓。
-- 不要直写 CDN，不要在本仓 PR 里「代跑」`publish-data.sh` 当内容发布。
+- 不要直写 CDN，不要在本仓 PR 里「代跑」数据发布脚本（内部仓库） 当内容发布。
 - 不要 AI 重绘或改色正典形象。
 - 不要在晋升门未决前 merge 任何公开 KB / 把 inbox 建议当作已上线事实。
 - 不要把本条目内容写进 `index.html` / `mascot.html` 或 CDN `kb-data.json`。

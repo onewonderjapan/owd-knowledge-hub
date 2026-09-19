@@ -31,7 +31,7 @@
      deploy.yml に必要な追加は 2 箇所：
        1) on.push.paths に "og.png" を追加（画像更新でデプロイが走るように）
        2) Sync ステップに
-          aws s3 cp og.png s3://onewonder-public-site/og.png \
+          aws s3 cp og.png s3://"$BUCKET"/og.png \
             --content-type "image/png" --cache-control "public, max-age=604800"
      画像を CDN（cdn.onewonder.co.jp/media/site/）側へ置く運用にする場合は、
      この og.png をリポジトリから外し、content 配信パイプライン側で管理する。
@@ -517,7 +517,8 @@ window.lsJSON = function(k, fallback){
 <script src="app.i18n.js"></script>
 <script>window.__KB_DATA_URL__="https://cdn.onewonder.co.jp/data/kb-data.json";</script>
 <!-- データ層（取得・正規化・遮断・スクラブ）。PR #1 指摘 1 への対応で分離した。
-     遮断はあくまで安全網で、根治は publish-data.sh 側（指摘 3）。 -->
+     遮断はあくまで安全網で、根治はデータ生成側。
+     data-side filtering applies; see private ops repo for policy. -->
 <script src="app.data.js"></script>
 <!-- 画面の本体。PR #1 指摘 1 への対応で app.js へ分離した。
      app.i18n.js（KT）と app.data.js（DATA / isPublishable）に依存するので、

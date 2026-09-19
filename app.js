@@ -645,8 +645,8 @@ function renderConclWall(opts){
   }
   return h || '<div class="panel"><p class="muted">'+esc(KT('c_nomatch'))+'</p></div>';
 }
-/* R1: 事業ライン名を多言語化。あわせて説明文から社内コード名（白菜咕咕 / ark-harness /
-   Wonder / 知识波 など、対外的に意味が通らない内部呼称）を外し、扱う領域の説明に置き換えた。 */
+/* R1: 事業ライン名を多言語化。あわせて説明文から、対外的に意味が通らない社内コード名を
+   外し、扱う領域の説明に置き換えた。 */
 const LINE_I18N = {
   ja:{content:['コンテンツ制作','ショート動画の企画・制作・運用'],
       'enterprise-ai':['企業向け AI 導入','RAG・ファインチューニング・ローカル LLM'],
@@ -697,16 +697,12 @@ function renderPanelShell(o){
 }
 /* ============================================================================
    R1（内部商業情報の保護）で削除した 3 パネル
-     ・renderStatusStrip … 「今日の変化」。git のコミットハッシュ（DATA.today.head）を
-        公開サイトに出力していた。
-     ・renderReviewPanel … 「要レビュー」。ソース乖離 / 期限超過 / 孤立 / 未検証 / 廃止の
-        内部品質メトリクスを、そのまま客先に見せていた。
-     ・renderActionsPanel … 「推奨アクション」。入札書類の取得指示、提案に含めるかの判断、
-        「文書を見る前に契約金額を見積もるな」等、社内の営業指示そのものを公開していた。
-   いずれも呼び出し側（renderOverview）から外し、関数本体も削除済み。
-   注意：元データ（DATA.today / DATA.review / DATA.actions）は CDN の kb-data.json に
-   依然含まれている。ページ側で描画しなくても JSON を直接取得すれば読めるため、
-   恒久対策は内部 workspace の scripts/publish-data.sh 側で出力しないこと。
+     ・renderStatusStrip（「今日の変化」）
+     ・renderReviewPanel（「要レビュー」）
+     ・renderActionsPanel（「推奨アクション」）
+   いずれも内部運用のための表示だったので、呼び出し側（renderOverview）から外し、
+   関数本体も削除した。
+   data-side filtering applies; see private ops repo for policy.
    ============================================================================ */
 function renderWeekConcl(){
   const cut = new Date(Date.now() - 7*86400000).toISOString().slice(0,10);
@@ -1007,16 +1003,12 @@ function renderSignalCards(){
     body:'<div class="sig-grid">'+sigs.map(card).join('')+'</div>'});
 }
 
-/* R1（内部商業情報の保護）：概要画面から以下の内部運用パネルを撤去した。
-   ・調査ウィンドウ経過日数 / 校验エラー・警告数 / 「数据详情」（カバレッジ等の内部 QA 指標）
-   ・renderStatusStrip（「今日の変化」。git のコミットハッシュを公開していた）
-   ・renderReviewPanel（「要レビュー」。超過 12 / 未検証 17 といった内部品質メトリクス）
-   ・renderActionsPanel（「推奨アクション」。入札方針・提案判断など社内の営業指示そのもの）
-   ・「ウォッチ中キーワード」（社内ウォッチリストの露出）
-   ・「データ健全性」（バリデーション結果）
+/* R1（内部商業情報の保護）：概要画面から内部運用のためのパネルを撤去した。
+   ・調査ウィンドウ経過日数 / 検証エラー・警告数 / 「データ詳細」（内部 QA 指標）
+   ・renderStatusStrip / renderReviewPanel / renderActionsPanel
+   ・「ウォッチ中キーワード」「データ健全性」
    品質・手法の透明性は、対外的に意味のある形で「会社情報 → 調査手法と掲載基準」に集約した。
-   これらのデータ（DATA.today / review / actions / validation / watchlist）は CDN の
-   kb-data.json には引き続き含まれているため、根本的な遮断は publish-data.sh 側で行うこと。 */
+   data-side filtering applies; see private ops repo for policy. */
 /* R33：ナレッジベースの状態パネル。
    これまで概要は「17 件 / 24 結論 / 8 実験」という成果の棚卸しだけで、
    同じデータが持っている「見直し期限を過ぎたもの 9 件」「つながりの無いもの 1 件」
@@ -1537,8 +1529,7 @@ function renderDetail(){
   const stripDupH1 = md => {
     const t = String(n.title || '').replace(/\s+/g, '');
     return String(md).replace(/^\s*#\s+(.+?)\s*(?:\r?\n|$)/, (m, h) => {
-      /* R16：本文の見出しには題名から外した社内アカウント呼称が残っている場合がある
-         （例：題名「内容发布计划 v2（定位 v2）」／本文「# 白菜咕咕 · 内容发布计划 v2（定位 v2）」）。
+      /* R16：本文の見出しには、題名から外した社内呼称が残っている場合がある。
          本文の散文中の呼称は文の主語なので触らない方針だが、
          見出しは題名と同じ性質なので、比較のときだけ題名と同じ規則で正規化する。
          一致すれば見出しごと落ちるので、呼称も画面から消える。 */
@@ -1588,8 +1579,8 @@ function entityNames(){
 }
 function entityNeighbors(name){
   /* R30#5：従来は entity_graph の weight を「共起 N」として出していたが、
-     この重みは遮断ナレッジ込みで算出されており、辺に出てくる 23 名のうち 10 名は
-     遮断ナレッジにしか登場しない（RAG / SES / Qwen / Google / GLM など）。
+     この重みは遮断ナレッジ込みで算出されており、辺に出てくる名前の一部は
+     遮断ナレッジにしか登場しない。
      公開ナレッジの中で同じナレッジに同時に出てくる回数で数え直し、
      公開側で解決できる名前だけを返す。 */
   const mine = new Set(entityMentionNotes(name).map(n => n.id));

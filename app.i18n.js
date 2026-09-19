@@ -1044,11 +1044,11 @@ fr:{ home_aria:'Retour à l’accueil', back:'← Retour', to_top:'Retour en hau
    フォールバック必須：データ側に新しい値が増えても壊れないよう、
    表に無いものは元の値をそのまま返す（taxo() 参照）。
 
-   副産物：xhs-ops の原文「内容产线运营（白菜咕咕）」に含まれていた社内コード名
-   「白菜咕咕」が、ja/en/ko/de/es/fr 表示では出なくなる。
+   副産物：原文の分類名に含まれていた社内コード名が、
+   ja/en/ko/de/es/fr 表示では出なくなる。
    ============================================================================ */
 window.KB_TAXO = {
- /* topic：固有名詞（Instagram / TikTok / YouTube / Ark Harness / Wonder）は各言語共通なので
+ /* topic：固有名詞（Instagram / TikTok / YouTube など）は各言語共通なので
     表に入れず、フォールバックで元の値が出るようにしている。 */
  topic:{
   ja:{'ai-intel':'AI モデル情報','ai-news':'AI 主要ニュース','ai-workflows':'AI ワークフロー',
