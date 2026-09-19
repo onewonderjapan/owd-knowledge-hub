@@ -28,18 +28,56 @@
 
 **内容更新不再改动本仓库**。知识库笔记数据发布在 CDN：`https://cdn.onewonder.co.jp/data/kb-data.json`，页面打开时自动拉取最新版。
 
-生产线更新流程（内部 workspace 执行）：
+数据更新流程：
+
+1. 在内部 workspace 运行数据发布脚本（本仓库不含该脚本）：构建 → 过泄漏护栏 → 上传 CDN → 更新 `manifest.json` 版本号。
+2. 发布后在本仓库运行 `node tools/data-check.mjs`，确认线上产物不含内部数据（见下节）。
+3. 页面侧的 `scope` / `type` 遮断只是安全网，不能替代第 1 步的数据侧过滤。
+
+本仓库只承载页面结构：`index.html` / `mascot.html` 等页面文件变更才会触发自动部署（GitHub Actions → AWS）。
+
+## 本地校验工具（`tools/*.mjs`）
+
+两个脚本都只用 Node 标准库，不需要 `npm install`（Node 20+）。在仓库根目录执行：
 
 ```bash
-bash scripts/publish-data.sh   # 构建（含泄漏护栏）→ 上传 CDN → 更新 manifest
+node tools/pr-check.mjs     # 静态检查：产物齐全、HTML/CSS/JS 语法、i18n 键缺失
+node tools/data-check.mjs   # 泄漏门禁：检查线上 kb-data.json 是否残留内部数据
 ```
 
-本仓库只承载页面结构：`index.html` / `mascot.html` 变更才会触发自动部署（GitHub Actions → AWS）。
+`data-check` 的可选参数：
+
+```bash
+node tools/data-check.mjs --url <URL>     # 检查任意 URL
+node tools/data-check.mjs --file <PATH>   # 检查本地 JSON（无需网络）
+```
+
+**遮断语列表不放在本仓库。** `data-check` 按以下顺序读取，两者都没有时只跳过「按词匹配」的那部分检查并给出警告（`scope` / `type` 结构性检查照常执行）：
+
+1. 环境变量 `KHUB_INTERNAL_WORDS`：字符串的 JSON 数组，CI 从 secret 注入；
+2. `tools/internal-words.local.json`：本地用，已加入 `.gitignore`。
+
+格式见 `tools/internal-words.example.json`（占位符）。社内呼称、内部任务名、内部脚本路径等一律作为普通字符串放进同一个数组。检查失败时**不会输出词本身**（CI 日志是公开的），只给编号与命中次数。
+
+页面侧（`app.data.js`）同样不内嵌词表：公开可见性只由数据里的 `scope` / `type` 决定；需要时可在加载脚本前提供 `window.KB_INTERNAL_WORDS`。
+
+## 所需 secrets / vars（GitHub Actions）
+
+| 类型 | 名称 | 用途 | 不配置时 |
+|---|---|---|---|
+| secret | `AWS_ROLE_ARN` | OIDC 换取 AWS 临时凭证 | 部署失败 |
+| secret | `KHUB_INTERNAL_WORDS` | 泄漏门禁的遮断语列表（字符串 JSON 数组） | `data-check` 只跳过按词匹配的检查并警告，不失败 |
+| var | `KHUB_BUCKET` | 站点 S3 bucket 名 | 部署步骤报错中止 |
+| var | `KHUB_DISTRIBUTION_ID` | CloudFront distribution ID | 缓存失效步骤报错中止 |
+
+配置位置：仓库 **Settings → Secrets and variables → Actions**（secrets 与 variables 两个页签）。
+
+`deploy.yml` 会在上传任何文件**之前**先跑 `node tools/data-check.mjs`，失败即中止发布。
 
 ## 架构（结构-内容分离，已落地）
 
 - **本仓库 = 页面结构**：HTML/CSS/JS 与协作规范。push 到 `main` 后由 GitHub Actions 经 OIDC（免密钥）同步到 AWS S3 + CloudFront，正式站为 `https://hub.onewonder.co.jp`；GitHub Pages 仅作备用镜像。
-- **内容/媒体 = AWS S3 + CloudFront**：`s3://onewonder-public-content`（全私有，仅 CloudFront OAC 可读），对外统一走 `https://cdn.onewonder.co.jp`。基础设施由 Terraform 管理（内部 infra 目录），key 结构约定：`media/`（长缓存）、`data/`（不缓存）、`manifest.json`（版本+清单入口）。
+- **内容/媒体 = AWS S3 + CloudFront**：内容 bucket（全私有，仅 CloudFront OAC 可读；bucket 名见仓库 variables），对外统一走 `https://cdn.onewonder.co.jp`。基础设施由 Terraform 管理（内部 infra 目录），key 结构约定：`media/`（长缓存）、`data/`（不缓存）、`manifest.json`（版本+清单入口）。
 - **已完成**：吉祥物图片 16 张已迁移至 `media/mascot/`，`mascot.html` 按固定 CDN URL 引用；知识库笔记数据已拆分为 `data/kb-data.json`，`index.html` 启动时拉取渲染，内容更新不再改动本仓库；内容清单见 `https://cdn.onewonder.co.jp/manifest.json`。
 - **内容上传方要求**：其他仓库的生产线只向指定前缀上传（最小权限凭证），上传后必须更新 `manifest.json` 版本号；上传内容视同公开，先过泄漏扫描。
 
