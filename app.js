@@ -201,6 +201,24 @@ const dotLabel = (d, lim) => {
   const cls = dotCls(n, lim);
   return KT(cls === 'r' ? 'dot_over' : cls === 'y' ? 'dot_soon' : 'dot_ok', {n, l: lim});
 };
+/* R40（P1-2）：状態（noteStatus）の表示名とドット。 */
+const STATUS_KEYS = ['verified', 'unverified', 'overdue', 'draft'];
+const STATUS_LABEL = {verified:'kb_verified', unverified:'ns_unverified', overdue:'kb_overdue', draft:'ns_draft'};
+const statusLabel = k => KT(STATUS_LABEL[k] || 'ns_unverified');
+const statusDot = n => {
+  const k = noteStatus(n);
+  const lab = statusLabel(k);
+  return '<span class="dot st-'+k+'" role="img" title="'+esc(lab)+'" aria-label="'+esc(lab)+'"></span>';
+};
+const statusChip = n => { const k = noteStatus(n);
+  return '<span class="st-chip st-'+k+'">'+esc(statusLabel(k))+'</span>'; };
+/* R40（P1-1）：本文の言語バッジ。UI 言語と本文の言語が違うときだけ出す。 */
+const langBadge = n => {
+  if(!n || !n.lang || n.lang === window.KB_LANG) return '';
+  const nm = KT('lang_' + n.lang);
+  const label = nm === 'lang_' + n.lang ? String(n.lang) : nm;
+  return '<span class="lang-badge" title="'+esc(KT('lang_badge_t'))+'" lang="'+esc(n.lang)+'">'+esc(label)+'</span>';
+};
 /* R1: 多言語化に伴い定数配列から関数へ変更（言語切替時に読み直す必要があるため）。
    本文は KB_I18N の ck 配列を参照する。 */
 const CHECKLIST = () => {
@@ -273,7 +291,8 @@ function renderMD(md){
       }
       if(rows.length){
         let t = '<div class="twrap"><table><thead><tr>' + rows[0].map(c=>'<th>'+inline(c)+'</th>').join('') + '</tr></thead><tbody>';
-        for(let r=1;r<rows.length;r++) t += '<tr>' + rows[r].map(c=>'<td>'+inline(c)+'</td>').join('') + '</tr>';
+        /* R40（P1-9）：長い文の列は最低幅を広げる（狭い列で縦に何百 px も伸びるのを防ぐ） */
+        for(let r=1;r<rows.length;r++) t += '<tr>' + rows[r].map(c=>'<td'+(c.length > 24 ? ' class="td-long"' : '')+'>'+inline(c)+'</td>').join('') + '</tr>';
         out.push(t + '</tbody></table></div>');
       }
       continue;
@@ -366,6 +385,27 @@ function exportCSV(){
   a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv;charset=utf-8'}));
   a.download = 'kb-videos-' + DATA.built_at.slice(0,10) + '.csv';
   a.click();
+}
+/* R40（P0-2）：動画データが公開されていないときの画面。
+   タブ自体も隠している（syncVideoTab）が、#videos を直接開かれた場合に備えて、
+   何が無いのか・なぜ無いのかを書き、フィルタ・CSV・図表は描かない。 */
+function renderVideosEmpty(){
+  const sec = $('#view-videos');
+  if(!sec) return;
+  /* hidden 属性は .grid3{display:grid} などに負けるので style で消す */
+  sec.querySelectorAll(':scope > .filters, :scope > .grid3, :scope > .panel').forEach(x => { x.style.display = 'none'; });
+  let box = $('#videos-empty');
+  if(!box){ box = document.createElement('div'); box.id = 'videos-empty'; box.className = 'panel'; sec.appendChild(box); }
+  box.hidden = false;
+  box.innerHTML = '<h2 class="panel-title">'+esc(KT('v_empty_h'))+'</h2>'
+    + '<p class="muted" style="margin:0 0 8px">'+esc(KT('v_empty_d'))+'</p>'
+    + '<p style="margin:0"><a href="#notes" id="videos-empty-go" rel="noopener noreferrer">'+esc(KT('goto_notes'))+'</a></p>';
+  const go = $('#videos-empty-go');
+  if(go) go.onclick = e => { e.preventDefault(); switchTab('notes'); };
+}
+function syncVideoTab(){
+  const b = document.querySelector('nav button[data-tab="videos"]');
+  if(b) b.hidden = !VIDEOS.length;
 }
 function renderVideos(){
   let vs = filteredVideos().slice();
@@ -681,8 +721,10 @@ const LINE_I18N = {
       platform:['Plattform-Engineering','Entwicklungseffizienz, Tooling und Automatisierung']}
 };
 const lineDict = () => LINE_I18N[window.KB_LANG] || LINE_I18N.ja;
-const lineName = k => (lineDict()[k] || [k])[0];
-const lineDesc = k => (lineDict()[k] || ['',''])[1] || '';
+const lineName = k => (!k || k === '__none') ? KT('line_other') : (lineDict()[k] || [k])[0];
+const lineDesc = k => (!k || k === '__none') ? KT('line_other_d') : ((lineDict()[k] || ['',''])[1] || '');
+/* R40：事業ラインの照合。'__none' は「どのラインにも属さない」を表す */
+const lineMatch = (line, want) => want === '__none' ? !(line && lineDict()[line]) : line === want;
 /* 既存コードが LINE_NAMES[k] を参照しているため、Proxy で言語追随の読み取りを提供する
    （呼び出し側の書き換えを最小にするための互換シム）。 */
 const LINE_NAMES = new Proxy({}, {get:(_, k) => typeof k === 'string' ? lineName(k) : undefined,
@@ -708,40 +750,82 @@ function renderPanelShell(o){
    依然含まれている。ページ側で描画しなくても JSON を直接取得すれば読めるため、
    恒久対策は内部 workspace の scripts/publish-data.sh 側で出力しないこと。
    ============================================================================ */
+/* R40（P0-3）：「今週」の基準日はデータの as-of（today.date / built_at）にする。
+   従来は Date.now() から 7 日を引いていたため、ビルドが止まると閲覧日だけが進み、
+   逆にビルド直後は as-of と閲覧日のずれで窓が 1 日ずれていた。
+   さらに 7 日窓に結論が無いと「全期間の claim」で 5 件まで埋めていたため、
+   3 週間前の結論が「今週の新しい結論」として出ていた（観衆レビュー P0-3）。
+   埋め合わせはやめ、窓に無ければ無いと書く。 */
+function asOfDate(){
+  const t = DATA.today || {};
+  const d = String(t.date || (DATA.stats && DATA.stats.as_of) || DATA.built_at || '').slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : '';
+}
+function windowDays(){
+  const w = Number((DATA.today || {}).window_days || (DATA.stats || {}).window_days);
+  return w > 0 ? w : 7;
+}
+function windowStart(){
+  const d = asOfDate();
+  if(!d) return '';
+  const t = new Date(d + 'T00:00:00Z');
+  t.setUTCDate(t.getUTCDate() - (windowDays() - 1));
+  return t.toISOString().slice(0, 10);
+}
 function renderWeekConcl(){
-  const cut = new Date(Date.now() - 7*86400000).toISOString().slice(0,10);
-  const recentIds = new Set(pubNotes().filter(n => (n.created||'') >= cut).map(n => n.id));
+  const cut = windowStart();
+  const addedIds = new Set(((DATA.today || {}).added || []).map(x => x && x.id).filter(Boolean));
+  const recentIds = new Set(pubNotes()
+    .filter(n => addedIds.has(n.id) || (cut && String(n.created || '') >= cut))
+    .map(n => n.id));
   const seen = new Set();
-  let claims = [];
+  const claims = [];
   for(const c of (DATA.conclusions||[])){
     if(claims.length >= 5) break;
-    if(c.kind === 'claim' && recentIds.has(c.note_id) && !seen.has(c.text)){
+    if(c.kind === 'claim' && recentIds.has(c.note_id) && noteById(c.note_id) && !seen.has(c.text)){
       seen.add(c.text); claims.push(c);
     }
   }
-  for(const c of (DATA.conclusions||[])){
-    if(claims.length >= 5) break;
-    if(c.kind === 'claim' && !seen.has(c.text)){ seen.add(c.text); claims.push(c); }
-  }
-  return renderPanelShell({title: esc(KT('p_weekconcl')), badge: esc(KT('p_weekconcl_badge')),
+  const d = asOfDate() || buildDate();
+  /* 各項目に検証状態を添える（新着でも未検証のものがありうるため） */
+  const vmark = c => '<span class="st-chip st-'+(c.verified ? 'verified' : 'unverified')+'">'
+    + esc(KT(c.verified ? 'kb_verified' : 'ns_unverified'))+'</span>';
+  return renderPanelShell({title: esc(KT('p_weekconcl')), badge: esc(KT('p_weekconcl_badge', {d})),
     body: (claims.length
-      ? '<ol style="margin:0;padding-left:20px;font-size:13px">'+claims.map(c =>
-          '<li style="margin:4px 0">'+esc(c.text)+' <a data-note="'+esc(c.note_id)+'" href="#" rel="noopener noreferrer" style="font-size:12px" title="'+esc(KT('sig_open'))+'">↗</a></li>').join('')+'</ol>'
-      : '<p class="muted">'+esc(KT('p_weekconcl_none'))+'</p>')
-    + '<p class="footnote" style="margin:8px 0 0"><a href="#" id="goto-wall" rel="noopener noreferrer">'+esc(KT('goto_wall'))+'</a></p>'});
+      ? '<ol class="wc-list">'+claims.map(c =>
+          '<li>'+vmark(c)+' '+esc(c.text)+' <a data-note="'+esc(c.note_id)+'" href="#" rel="noopener noreferrer" style="font-size:12px" title="'+esc(KT('sig_open'))+'">↗</a></li>').join('')+'</ol>'
+      : '<p class="muted" style="margin:0">'+esc(KT('p_weekconcl_none', {d}))+'</p>')
+    + '<p class="footnote" style="margin:8px 0 0"><a href="#" id="goto-notes" rel="noopener noreferrer">'+esc(KT('goto_notes'))+'</a></p>'});
 }
-function renderNavTileGrid(s){
-  /* R1: 件数 0 の事業ラインは出さない（空の入口は対外的にマイナスなので隠す）。
-     従来は「平台工程 0 篇」がトップページに常時表示されていた。 */
-  const keys = Object.keys(lineDict()).filter(k => ((s.lines||{})[k]||0) > 0);
+/* R40（P2 H27）：事業ラインの件数は公開ナレッジから数え直し、
+   どのラインにも属さないナレッジを「その他」として出す。
+   従来は stats.lines だけを出していたため「3 + 14 ≠ 20」になっていた。 */
+const LINE_NONE = '__none';
+function lineCounts(){
+  const c = {};
+  pubNotes().forEach(n => { const k = n.line && lineDict()[n.line] ? n.line : LINE_NONE; c[k] = (c[k]||0) + 1; });
+  return c;
+}
+function renderNavTileGrid(){
+  /* R1: 件数 0 の事業ラインは出さない（空の入口は対外的にマイナスなので隠す）。 */
+  const cnt = lineCounts();
+  const keys = Object.keys(lineDict()).filter(k => (cnt[k]||0) > 0);
+  if(cnt[LINE_NONE]) keys.push(LINE_NONE);
   if(!keys.length) return '';
   return '<div class="lane-grid">' + keys.map(k =>
     '<button class="panel lane-tile" data-line="'+k+'">'
     + '<span class="lane-name">'+esc(lineName(k))+'</span>'
-    + '<span class="chip">'+esc(KT('unit_notes',{n:(s.lines||{})[k]||0}))+'</span>'
+    + '<span class="chip">'+esc(KT('unit_notes',{n:cnt[k]||0}))+'</span>'
     + '<span class="footnote">'+esc(lineDesc(k))+'</span></button>').join('') + '</div>';
 }
 
+/* R40（P0-3）：テーマの直近 7 日の動き。すべて 7 日窓の値だけを使う。
+   upd7（窓内に更新されたナレッジ数。新規も含む）が無い旧データでは new7 で代用する。 */
+function act7(b){
+  const upd = Math.max(Number(b && b.upd7) || 0, Number(b && b.new7) || 0);
+  const ev = Number(b && b.ev7) || 0;
+  return {upd, ev, score: upd + ev, any: upd + ev > 0};
+}
 /* ---------- 板块页（KB-DISPLAY-SPEC P0-1） ---------- */
 function renderBoards(){
   const el = $('#view-boards');
@@ -771,7 +855,9 @@ function renderBoards(){
          件数はこの画面で実際に並ぶ公開ナレッジの数（notes.length）に合わせる。 */
       + '<div class="stats">'
       + '<div class="stat"><div class="v">'+notes.length+'</div><div class="k">'+esc(KT('b_st_notes'))+'</div></div>'
-      + '<div class="stat"><div class="v">'+b.ev7+'</div><div class="k">'+esc(KT('b_st_ev7'))+'</div></div></div>'
+      + '<div class="stat"><div class="v">'+act7(b).upd+'</div><div class="k">'+esc(KT('b_st_upd7'))+'</div></div>'
+      + '<div class="stat"><div class="v">'+act7(b).ev+'</div><div class="k">'+esc(KT('b_st_ev7'))+'</div></div></div>'
+      + '<p class="footnote" style="margin:4px 0 0">'+esc(KT('h7_asof', {d: asOfDate() || buildDate()}))+'</p>'
       + '<div class="grid3" style="align-items:start">'
       + '<div class="panel"><h2 class="panel-title">'+esc(KT('b_top5concl'))+' <span class="chip">'+esc(KT('b_from_concl'))+'</span></h2>'
       + (b.concl.length ? '<ol style="margin:0;padding-left:20px;font-size:13px">'
@@ -814,9 +900,15 @@ function renderBoards(){
     DATA.notes.filter(isPublishable).forEach(n => { pubByTopic[n.topic] = (pubByTopic[n.topic]||0) + 1; });
     const all = Object.values(DATA.boards||{})
       .filter(b => (pubByTopic[b.topic] || 0) > 0)
-      /* R30#1-a：heat7 順ではなく公開ナレッジ件数順に並べる */
-      .sort((a,b) => (pubByTopic[b.topic]||0) - (pubByTopic[a.topic]||0));
-    const shown = state.boardLine ? all.filter(b => b.line === state.boardLine) : all;
+      /* R40（P0-3）：見出しは「直近 7 日の動き順」なので、その通りに 7 日の値で並べる
+         （カードに出す「更新 N ・ 出来事 M」の合計 → データ側の heat7 → 件数の順）。
+         R30 で件数順にしたのは heat7 が遮断ナレッジ込みの値だったため。
+         現在の kb-data.json は公開分だけで集計されている（data-check が検査）。
+         heat7 が同点（旧データでは全テーマ欠落＝0）のときは件数順。 */
+      .sort((a,b) => act7(b).score - act7(a).score
+        || (Number(b.heat7)||0) - (Number(a.heat7)||0)
+        || (pubByTopic[b.topic]||0) - (pubByTopic[a.topic]||0));
+    const shown = state.boardLine ? all.filter(b => lineMatch(b.line, state.boardLine)) : all;
     const maxC = Math.max(...all.map(b => pubByTopic[b.topic]||0), 1);
     el.innerHTML =
       '<h1 class="sr-only">'+esc(KT('tab_boards'))+'</h1>'
@@ -837,8 +929,10 @@ function renderBoards(){
                R30#1-a：b.new7 は未サニタイズで「1 件 ・ +3」と矛盾していたので外し、
                裏づけの取れる「出来事 N」だけ残す（b_meta_ev は b_meta の続きとして
                書かれているので、先頭の区切り記号を落としてから使う）。 */
-            + (b.ev7 ? '<div class="bcard-meta">'
-                + esc(KT('b_meta_ev',{n:b.ev7}).replace(/^[ 　・·]+/, ''))+'</div>' : '')
+            /* R40（P0-3）：直近 7 日の数字は 7 日の値（upd7 / ev7）だけで作る */
+            + '<div class="bcard-meta">'+esc(act7(b).any
+                ? KT('b_meta7', {u: act7(b).upd, e: act7(b).ev})
+                : KT('h7_none'))+'</div>'
             + (b.kw && b.kw.length ? '<div class="bcard-kw">'+b.kw.slice(0,4).map(([w]) => '<span>'+esc(w)+'</span>').join('')+'</div>' : '')
             + '</div>';
         }).join('')
@@ -980,7 +1074,11 @@ function deriveSignals(){
   Object.values(DATA.watchlist || {}).forEach(ids => (ids || []).forEach(id => candIds.add(id)));
   /* 候选集 = digest 新增 ∪ watchlist 命中；payload 里有 id 但库里查无详情的跳过 */
   /* noteById 側でブロック対象を除外済み（R1）。filter(Boolean) がその受け皿になる。 */
-  const cands = [...candIds].map(noteById).filter(Boolean);
+  /* R40（P1-6）：「今週の注目シグナル」は as-of から 7 日窓の新着・更新だけ。
+     旧データの watchlist には 3 週間前の digest が入っており、それが「今週」として出ていた。 */
+  const cut = windowStart();
+  const cands = [...candIds].map(noteById).filter(Boolean)
+    .filter(n => addedIds.has(n.id) || (cut && String(n.updated || '') >= cut));
   /* 候选优先级：digest 新增 > watchlist 命中多 > 更新时间新 */
   return cands.sort((a,b) => {
     const A = addedIds.has(a.id), B = addedIds.has(b.id);
@@ -1041,10 +1139,11 @@ function kbHealth(){
   const val = DATA.validation || {};
   return {
     total:    pub.length,
-    verified: pub.filter(isVerified).length,
-    /* 期限超過はナレッジ側から数え直す。review.stale は遮断混じりのうえ、
-       遮断ルールを変えても追随しないため。 */
-    overdue:  pub.filter(isOverdue).length,
+    /* R40（P0-4）：状態は noteStatus 1 本で数える（一覧の絞り込み・ドットと同じ口径）。
+       旧データ（verified 欠落）では検証済みは 0 になる＝過大に主張しない。 */
+    verified: pub.filter(n => noteStatus(n) === 'verified').length,
+    overdue:  pub.filter(n => noteStatus(n) === 'overdue').length,
+    byStatus: STATUS_KEYS.reduce((o, k) => (o[k] = pub.filter(n => noteStatus(n) === k).length, o), {}),
     orphans:  onlyPub(rv.orphans).length,
     errors:   real(val.errors).length,
     builtAt:  String(DATA.built_at || '').slice(0, 10)
@@ -1073,8 +1172,42 @@ function renderKbState(){
     +   stat(h.orphans,  KT('kb_orphan'),  'orphan',  h.orphans)
     +   stat(h.errors,   KT('kb_verr'))
     + '</div>'
+    + statusLegend(h.byStatus)
     + '<p class="footnote" style="margin:0">'+esc(KT('kb_state_d'))+'</p>'
     + '</div>';
+}
+/* R40（P1-2 / P2 H26）：状態ドットの凡例。色だけで伝えないよう、語を必ず添える。
+   counts を渡すと件数も出す（概要の状態パネル）。 */
+function statusLegend(counts){
+  return '<div class="st-legend" role="list" aria-label="'+esc(KT('lg_title'))+'">'
+    + '<span class="st-legend-h">'+esc(KT('lg_title'))+'</span>'
+    + STATUS_KEYS.map(k => '<span class="st-legend-i" role="listitem"><span class="dot st-'+k+'" aria-hidden="true"></span>'
+      + esc(statusLabel(k)) + (counts ? ' <b>'+esc(String(counts[k]||0))+'</b>' : '') + '</span>').join('')
+    + '</div>';
+}
+/* R40：キーワード順位。kw.top（公開分だけで数えた登場ナレッジ数）を優先し、
+   旧データで空なら watchlist（公開 id に絞り済み）から作る。 */
+function kwTop(lim){
+  const top = ((DATA.kw && DATA.kw.top) || [])
+    .map(k => [String((k && k.kw) || ''), Number(k && k.docs) || 0])
+    .filter(([k, n]) => k && n > 0);
+  const src = top.length ? top : Object.entries(DATA.watchlist||{})
+    .map(([k, ids]) => [k, (ids||[]).length]).filter(([, n]) => n > 0);
+  return src.sort((a, b) => b[1] - a[1]).slice(0, lim);
+}
+/* R40：語で検索する（キーワード一覧・関連図のキーワードから呼ぶ） */
+function searchFor(q){
+  const inp = $('#q'); if(inp) inp.value = q;
+  applyQuery(String(q || '').trim());
+}
+/* R40（P1-1）：UI 言語と本文の言語が違うことを概要の先頭で 1 行だけ伝える。
+   個々のナレッジにも本文の言語バッジを付けている（langBadge）。 */
+function renderLangNotice(){
+  const t = KT('ov_lang');
+  if(!t) return '';
+  const langs = new Set(pubNotes().map(n => n.lang).filter(Boolean));
+  if(!langs.size || (langs.size === 1 && langs.has(window.KB_LANG))) return '';
+  return '<p class="lang-note ov-lang">'+esc(t)+'</p>';
 }
 function renderOverview(){
   const s = DATA.stats;
@@ -1085,69 +1218,60 @@ function renderOverview(){
      （renderHeroSide）へ移した。関数自体は残してあるので、戻したい場合は
      ここに + renderSignalCards() を復帰させ、renderHeroSide() の呼び出しを外す。 */
   $('#view-overview').innerHTML = renderHero()
+    + renderLangNotice()                   /* R40（P1-1）：本文の言語を 1 行で明示 */
     + renderKbState()                      /* R33：系の現在の状態 */
-    + renderNavTileGrid(s)
+    + renderNavTileGrid()
     + '<div class="grid3" style="align-items:start">'
-    + '<div class="panel" style="grid-column:span 2"><h2 class="panel-title">'+esc(KT('p_heat'))+' <span class="chip">'+esc(KT('p_heat_badge'))+'</span></h2>'
-    /* R26①：公開ナレッジが 0 件のテーマは行に出さない。
-       押しても中身が無い行になるため（実測で 20 件中 10 件が該当）。
-       件数は公開側から数え直し、遮断ルールの変更に自動で追随させる。 */
-    /* R29#1：バーと数字を「公開ナレッジ件数」で作り直す。
-       従来は heat7（新規×3 + 出来事×2 + エンティティ×1 + 横断×0.5）を使っていたが、
-       出来事・エンティティ・横断は遮断ナレッジ由来で公開分に割り当て直せない
-       （実測：公開ナレッジの entities は 0 件）。そのため画面には
-         AI 主要ニュース  heat 40.5 / 1 件
-         AI ラボ          heat 31.5 / 8 件
-       が並び、**バーが一番長いテーマが一番件数の少ないテーマ**になっていた。
-       数字の裏づけが取れないものを出さない方針にし、件数だけで並べる。
-       trend（↑↓）も遮断前の値（ai-news で 2.55）なので出さない。
-       遮断ルールを緩めれば件数が増え、そのまま追随する。 */
+    + '<div class="panel" style="grid-column:span 2"><h2 class="panel-title">'+esc(KT('p_heat'))+' <span class="chip">'+esc(KT('p_heat_badge', {d: asOfDate() || buildDate()}))+'</span></h2>'
+    /* R40（P0-3）：バッジは「直近 7 日」なのに、数字は全期間の公開ナレッジ件数だった
+       （AI ラボ 8 件はすべて 3 週間前の更新）。数字もバーも 7 日窓の値（upd7 + ev7）にする。
+       7 日窓に動きの無いテーマは「動きなし」と書き、全テーマが 0 ならそう書く。
+       R40（P2 H22）：テーマ名の長さでバーの起点がずれていたので、行を 3 列グリッドにして
+       バーの起点をそろえる（.hrow）。 */
     + (() => {
         const ht = {}; pubNotes().forEach(n => ht[n.topic] = (ht[n.topic]||0)+1);
-        const rows = (DATA.heat||[]).map(b => [b, ht[b.topic] || 0])
-          .filter(([, c]) => c > 0)
-          .sort((a, b) => b[1] - a[1])
+        const rows = (DATA.heat||[]).filter(b => (ht[b.topic]||0) > 0)
+          .map(b => [b, act7(b)])
+          .sort((a, b) => b[1].score - a[1].score || (ht[b[0].topic]||0) - (ht[a[0].topic]||0))
           .slice(0, 10);
         if(!rows.length) return '<p class="muted" style="margin:0">—</p>';
-        const maxC = Math.max(...rows.map(r => r[1]), 1);
-        return rows.map(([b, c]) =>
-          '<div class="krow" style="cursor:pointer" data-board="'+esc(b.topic)+'">'
-          + '<span class="l"><i style="display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px;background:var(--accent)"></i>'+esc(topicName(b.topic) || b.name)+'</span>'
-          + '<span class="bartrack"><span class="barfill" style="display:block;width:'+(c/maxC*100)+'%"></span></span>'
-          + '<span class="r">'+esc(KT('unit_notes',{n:c}))+'</span></div>').join('');
+        const maxC = Math.max(...rows.map(r => r[1].score), 1);
+        const anyAct = rows.some(r => r[1].any);
+        return (anyAct ? '' : '<p class="muted" style="margin:0 0 6px">'+esc(KT('h7_all_zero', {d: asOfDate() || buildDate()}))+'</p>')
+          + rows.map(([b, a]) =>
+          '<div class="krow hrow'+(a.any ? '' : ' is-idle')+'" style="cursor:pointer" data-board="'+esc(b.topic)+'">'
+          + '<span class="l"><i class="hsw"></i>'+esc(topicName(b.topic) || b.name)+'</span>'
+          + '<span class="bartrack"><span class="barfill" style="display:block;width:'+(a.score/maxC*100)+'%"></span></span>'
+          + '<span class="r">'+esc(a.any ? KT('b_meta7', {u: a.upd, e: a.ev}) : KT('h7_none'))+'</span></div>').join('');
       })()
-    + '<p class="footnote" style="margin:6px 0 0">'+esc(KT('p_heat_note'))+'</p></div>'
+    + '<p class="footnote" style="margin:6px 0 0">'+esc(KT('p_heat_note', {d: asOfDate() || buildDate()}))+'</p></div>'
     + '<div class="panel"><h2 class="panel-title">'+esc(KT('p_kw'))+'</h2>'
     + '<div class="small" style="margin-bottom:4px">'+esc(KT('kw_top'))+'</div>'
-    /* R26①：kw.top は遮断前の件数で作られていたため、
-       「Wonder4ge 20 件」のように公開ナレッジ数（17）を超える数字が出ていた。
-       watchlist は kbSanitize が公開分だけに絞り込んでいるので、そちらから
-       作り直す（＝画面に出す数字は必ず公開ナレッジで裏づけが取れる）。 */
+    /* R40：新しいビルドでは watchlist は「直近の新着」だけになった（2 語しか残らない）。
+       総合の順位はデータ側が公開ナレッジだけで数えた kw.top を使う
+       （テンプレ段落はデータ側で除外済み）。押すと語で検索する。
+       kw.top が無い旧データでは従来どおり watchlist から作る。 */
     + (() => {
-        const wl = Object.entries(DATA.watchlist||{})
-          .map(([k, ids]) => [k, (ids||[]).length])
-          .filter(([, n]) => n > 0)
-          .sort((a, b) => b[1] - a[1])
-          .slice(0, 10);
-        if(!wl.length) return '<p class="muted" style="margin:0">—</p>';
-        return wl.map(([kw, n]) => '<div class="krow" style="cursor:pointer" data-kwe="'+esc(kw)+'"><span class="l">'+esc(kw)+'</span><span class="r">'+esc(KT('unit_notes',{n}))+'</span></div>').join('');
+        const top = kwTop(10);
+        if(!top.length) return '<p class="muted" style="margin:0">—</p>';
+        return top.map(([kw, n]) => '<div class="krow" style="cursor:pointer" data-kwq="'+esc(kw)+'"><span class="l">'+esc(kw)+'</span><span class="r">'+esc(KT('unit_notes',{n}))+'</span></div>').join('');
       })()
-    /* R29#4：「上昇」は履歴が溜まるまで見出しごと出さない。
-       実測：常に「集計に十分な履歴がありません。」だけが出ており、
-       見出し＋空文言で 50px を占めていた。データが入れば自動で復活する。 */
+    /* R29#4：「上昇」は履歴が溜まるまで見出しごと出さない。 */
     + ((DATA.kw?.rising||[]).length
         ? '<div class="small" style="margin:10px 0 4px">'+esc(KT('kw_rising'))+'</div>'
           + (DATA.kw?.rising||[]).map(k => {
             const d = k.cur - k.prev; const cls = d>0?'up':(d<0?'down':'flat'); const sym = d>0?'↑':(d<0?'↓':'→');
-            return '<div class="krow" style="cursor:pointer" data-kwe="'+esc(k.kw)+'"><span class="l">'+esc(k.kw)+'</span><span class="r">'+k.cur+' <span style="opacity:.6">← '+k.prev+'</span> <span class="'+cls+'">'+sym+(d>0?'+':'')+d+'</span></span></div>';
+            return '<div class="krow" style="cursor:pointer" data-kwq="'+esc(k.kw)+'"><span class="l">'+esc(k.kw)+'</span><span class="r">'+k.cur+' <span style="opacity:.6">← '+k.prev+'</span> <span class="'+cls+'">'+sym+(d>0?'+':'')+d+'</span></span></div>';
           }).join('')
         : '')
     + '</div></div>'
     + renderWeekConcl()
-    + '<div class="panel"><h2 class="panel-title">'+IC.check+' '+esc(KT('p_checklist'))+' <span class="muted" id="ck-count"></span></h2>'
-      + '<div class="cgrid">'
+    /* R40（P2 H23）：ショート動画のセルフチェックは AI 情報の概要とは主題が違う
+       （「0/7」が概要の真ん中に出ていた）。末尾の折りたたみに移す。 */
+    + '<details class="panel ck-panel"><summary class="panel-title">'+IC.check+' '+esc(KT('p_checklist'))+' <span class="muted" id="ck-count"></span></summary>'
+      + '<div class="cgrid" style="margin-top:10px">'
       + CHECKLIST().map((c,i) => '<label class="check'+(saved[i]?' done':'')+'"><input type="checkbox" data-ck="'+i+'" '+(saved[i]?'checked':'')+'><span>'+esc(c)+'</span></label>').join('')
-      + '</div></div>';
+      + '</div></details>';
   /* R5: ヒーロー右カラムの項目は <a href="#"> なので、preventDefault しないと
      クリックでページ先頭へ飛んでしまう（href="#" の既定動作）。
      ここで一括して抑止する。 */
@@ -1157,8 +1281,8 @@ function renderOverview(){
   });
   $('#view-overview').querySelectorAll('[data-line]').forEach(el => el.onclick = () => {
     state.boardLine = el.dataset.line; state.boardTopic = ''; switchTab('boards'); });
-  $('#view-overview').querySelectorAll('[data-kwe]').forEach(el => el.onclick = () => {
-    openEntity(el.dataset.kwe); });
+  $('#view-overview').querySelectorAll('[data-kwq]').forEach(el => el.onclick = () => {
+    searchFor(el.dataset.kwq); });
   /* R34：健全性パネルの数字 → その状態だけの一覧へ。
      期間の絞り込みが残っていると件数が合わなくなるので併せて解除する。 */
   $('#view-overview').querySelectorAll('[data-kbstate]').forEach(el => {
@@ -1180,8 +1304,10 @@ function renderOverview(){
      data-kw / data-act / #act-toggle のハンドラも併せて削除した。 */
   const hm = $('#hero-method');
   if(hm) hm.onclick = (e) => { e.preventDefault(); switchSection('about'); gotoMethod(); };
-  const gw = $('#goto-wall');
-  if(gw) gw.onclick = (e) => { e.preventDefault(); state.boardLine = 'content'; state.boardTopic = ''; switchTab('boards'); };
+  /* R40：旧「結論の一覧を見る」は content ラインのテーマ一覧へ飛んでいた（結論が出ない）。
+     ナレッジ一覧へ送る。 */
+  const gn = $('#goto-notes');
+  if(gn) gn.onclick = (e) => { e.preventDefault(); state.sel = null; switchTab('notes'); };
   const ct = $('#concl-toggle');
   if(ct) ct.onclick = () => { state.conclFull = !state.conclFull; renderOverview(); window.scrollTo({top:0}); };
   const boxes = $('#view-overview').querySelectorAll('[data-ck]');
@@ -1209,9 +1335,8 @@ function orphanIdSet(){
 /* R34：状態の判定を 1 か所に。健全性パネルも一覧もここを通す。 */
 function matchNoteState(n, st){
   if(!st) return true;
-  if(st === 'verified')   return isVerified(n);
-  if(st === 'unverified') return !isVerified(n);
-  if(st === 'overdue')    return isOverdue(n);
+  /* R40：状態は noteStatus 1 本（概要の件数・一覧のドットと同じ口径） */
+  if(STATUS_KEYS.indexOf(st) >= 0) return noteStatus(n) === st;
   if(st === 'orphan')     return orphanIdSet().has(n.id);
   return true;
 }
@@ -1221,7 +1346,7 @@ function filteredNotes(){
     if(!isPublishable(n)) return false;
     if(state.topic && n.topic !== state.topic) return false;
     if(state.tag && !n.tags.includes(state.tag)) return false;
-    if(state.line && n.line !== state.line) return false;
+    if(state.line && !lineMatch(n.line, state.line)) return false;
     if(state.fresh === 'g' && n.days > (n.stale_limit||30)/2) return false;
     if(state.fresh === 'y' && (n.days <= (n.stale_limit||30)/2 || n.days > (n.stale_limit||30))) return false;
     if(state.fresh === 'r' && n.days <= (n.stale_limit||30)) return false;
@@ -1245,16 +1370,15 @@ function renderNoteList(){
      内寸 310px しかなく、長いラベルを並べると 7 言語すべてで折り返す）。 */
   const periods = [['', KT('np_all')],['7', KT('np_7')],['30', KT('np_30')],['90', KT('np_90')]];
   /* R34：状態の選択肢。語は健全性パネル（kb_*）と共有し、食い違いを作らない。 */
-  const states = [['', KT('ns_all')], ['verified', KT('kb_verified')], ['unverified', KT('ns_unverified')],
-                  ['overdue', KT('kb_overdue')], ['orphan', KT('kb_orphan')]];
+  const states = [['', KT('ns_all')]].concat(STATUS_KEYS.map(k => [k, statusLabel(k)]), [['orphan', KT('kb_orphan')]]);
   const item = n => { const d = document.createElement('div');
     d.className = 'item' + (state.sel===n.id ? ' sel' : '');
     d.dataset.note = n.id; /* T-14b 悬停预览入口锚点 */
-    /* R34：ドットに読み上げ用の名前と説明を付ける（色だけで伝えない）。 */
-    const dlab = dotLabel(n.days, n.stale_limit);
-    d.innerHTML = '<div class="t"><span class="dot '+dotCls(n.days, n.stale_limit)+'" role="img"'
-      + ' title="'+esc(dlab)+'" aria-label="'+esc(dlab)+'"></span>'+esc(n.title)+'</div>'
-      + '<div class="meta">'+esc(topicName(n.topic))+' · '+esc(noteType(n.type))+' · '+esc(KT('updated',{d:n.updated}))+'</div>';
+    /* R34：ドットに読み上げ用の名前と説明を付ける（色だけで伝えない）。
+       R40（P1-2）：ドットは鮮度ではなく状態（検証済み / 未検証 / 期限切れ / ドラフト）。
+       一覧の上に凡例を出し、メタ行にも状態の語を書く。 */
+    d.innerHTML = '<div class="t">'+statusDot(n)+esc(n.title)+'</div>'
+      + '<div class="meta">'+statusChip(n)+langBadge(n)+' '+esc(topicName(n.topic))+' · '+esc(noteType(n.type))+' · '+esc(KT('updated',{d:n.updated}))+'</div>';
     d.onclick = () => openNote(n.id);
     return d; };
   /* ============================================================================
@@ -1309,13 +1433,19 @@ function renderNoteList(){
   el.prepend(head);
   /* R14：言語注記をここへ。本文を読み始める直前に出るので伝わりやすい。 */
   const lnote = KT('lang_note');
+  let after = head;
   if(lnote){
     const p = document.createElement('p');
     p.className = 'lang-note';
     p.style.margin = '10px 0 2px';
     p.textContent = lnote;
     head.after(p);
+    after = p;
   }
+  /* R40（P2 H26）：状態ドットの凡例 */
+  const lg = document.createElement('div');
+  lg.innerHTML = statusLegend(null);
+  after.after(lg.firstChild);
   if(state.noteView === 'list'){
     ns.forEach(n => el.appendChild(item(n)));
   } else {
@@ -1324,7 +1454,7 @@ function renderNoteList(){
     ns.forEach(n => {
       const k = key==='type'  ? (noteType(n.type) || '—')
               : key==='topic' ? (topicName(n.topic) || '—')
-              :                 (n.line ? lineName(n.line) : '—');
+              :                 lineName(n.line && lineDict()[n.line] ? n.line : '__none');
       (groups[k] = groups[k]||[]).push(n); });
     Object.entries(groups).sort((a,b) => b[1].length - a[1].length).forEach(([g, list]) => {
       const h = document.createElement('div');
@@ -1467,11 +1597,43 @@ function bindNotePick(el){
   el.querySelectorAll('[data-note]').forEach(a => a.onclick = ev => {
     ev.preventDefault(); openNote(a.dataset.note); });
 }
+/* R40（P1-10）：URL から人が読める出典名を作る。
+   github.com/<owner>/<repo>/… → 「owner/repo」、それ以外は「ドメイン › 最後のパス要素」。
+   ドメインだけ（github.com が 10 本並ぶ）では、どれが何の出典か分からなかった。 */
+function sourceLabel(url, text){
+  let u;
+  try { u = new URL(url); } catch(e){ return String(text || url); }
+  const host = u.hostname.replace(/^www\./, '');
+  const parts = u.pathname.split('/').filter(Boolean).map(p => { try { return decodeURIComponent(p); } catch(e){ return p; } });
+  if((host === 'github.com' || host === 'gitlab.com') && parts.length >= 2){
+    const tail = parts.length > 2 && parts[2] !== 'tree' && parts[2] !== 'blob' ? ' › ' + parts.slice(2).join('/') : '';
+    return parts[0] + '/' + parts[1] + (tail.length > 40 ? tail.slice(0, 40) + '…' : tail);
+  }
+  const t = String(text || '').trim();
+  /* 本文のリンク文字列がドメインそのものでなければ、それが一番読める */
+  if(t && !/^(https?:\/\/)?[\w.-]+\.[a-z]{2,}\/?$/i.test(t) && t.length <= 60) return t + ' (' + host + ')';
+  const last = parts.length ? parts[parts.length - 1].replace(/\.(html?|php|aspx?)$/i, '') : '';
+  return last ? host + ' › ' + (last.length > 36 ? last.slice(0, 36) + '…' : last) : host;
+}
+function collectSources(n, body){
+  const seen = new Map();
+  const add = (url, text) => {
+    const k = String(url || '').trim();
+    if(!/^https?:\/\//i.test(k) || seen.has(k)) return;
+    seen.set(k, {url: k, label: sourceLabel(k, text)});
+  };
+  (n.sources || []).forEach(s2 => s2 && add(s2.url, s2.label));
+  if(body) body.querySelectorAll('a[href^="http"]').forEach(a => add(a.getAttribute('href'), a.textContent));
+  return [...seen.values()];
+}
 function renderDetail(){
   const n = noteById(state.sel); const el = $('#note-detail');
   /* R20-B8：ナレッジを選んでいる間は画面レベルの見出しを h2 に落とす
      （選択中の h1 はナレッジのタイトル 1 つだけにする）。 */
   setHeadLevel(document.getElementById('h-view-notes'), n ? 'h2' : 'h1');
+  /* R40（P1-9）：スマホではナレッジを開いたら一覧を隠し、本文を先に出す（CSS 側） */
+  const vn = document.getElementById('view-notes');
+  if(vn) vn.classList.toggle('has-sel', !!n);
   if(!n){ el.innerHTML = notePickHTML(); bindNotePick(el); return; }
   const claims = (DATA.conclusions||[]).filter(c => c.note_id===n.id && c.kind==='claim').slice(0,5);
   /* R27：被リンクを公開対象だけに絞る。
@@ -1482,7 +1644,14 @@ function renderDetail(){
      isPublishable を変えても追随していなかった。
      件数（infobox の dl）も同じ母数にする。 */
   const backs = (n.backlinks||[]).filter(b => !!noteById(b.id));
+  /* R40（P0-4）：次回見直し日はデータの review_due をそのまま出す（検証日が無くても期限はある）。
+     期限を過ぎていれば「期限切れ」と併記する。review_due の無い旧データだけ従来の計算。 */
   const nextReview = (() => {
+    if(n.review_due){
+      const over = isOverdue(n);
+      return '<span class="'+(over ? 'due-over' : '')+'">'+esc(String(n.review_due))
+        + (over ? ' '+esc(KT('due_over')) : '')+'</span>';
+    }
     if(!n.verified_at) return '—';
     const rv = parseInt(n.review_every||'90', 10) || 90;
     const d = new Date(n.verified_at);
@@ -1491,11 +1660,14 @@ function renderDetail(){
     return d.toISOString().slice(0,10)+'（'+KT('d_review_every',{n:rv})+'）';
   })();
   el.innerHTML =
-    '<div class="badges" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">'
+    /* R40（P1-9）：スマホでは一覧を隠して本文を先に出すので、一覧へ戻る導線を置く */
+    '<p class="m-only" style="margin:0 0 10px"><button class="btn" id="note-back">'+esc(KT('m_back'))+'</button></p>'
+    + '<div class="badges" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">'
     + '<span class="tagchip" style="background:var(--panel2);font-weight:600">'+esc(noteType(n.type) || '—')+'</span>'
-    + (n.line ? '<span class="tagchip" style="background:var(--panel2)">'+(LINE_NAMES[n.line]||n.line)+'</span>' : '')
-    + '<span class="tagchip" style="background:var(--panel2)">'+esc(n.status||'')+'</span>'
-    + (n.lang ? '<span class="tagchip" style="background:var(--panel2)">'+esc(n.lang)+'</span>' : '')
+    + (n.line ? '<span class="tagchip" style="background:var(--panel2)">'+esc(lineName(n.line))+'</span>' : '')
+    /* R40（P1-2）：生の status（stale 等）ではなく、画面共通の状態名を出す */
+    + statusChip(n)
+    + langBadge(n)
     + (n.source_drift ? '<span class="mtag" style="background:#c0392b;color:#fff">'+esc(KT('d_drift'))+'</span>' : '')
     + '</div>'
     + '<h1>'+esc(n.title)+'</h1>'
@@ -1509,13 +1681,16 @@ function renderDetail(){
     + '<p style="margin:0 0 10px"><button class="btn" id="copy-link" data-i18n="copy_link">リンクをコピー</button> '
     +   '<span class="meta" id="copy-link-msg" aria-live="polite"></span></p>'
     + '<div class="meta" style="margin-bottom:8px">'+esc(n.id)+' · '+esc(topicName(n.topic) || '—')+' · '
-    + '<span class="dot '+dotCls(n.days, n.stale_limit)+'"></span>'+esc(KT('meta_updated_ago',{n:n.days}))+'</div>'
+    /* R40（P2 H17）：経過日数はビルド時点（as-of）で数えた値なので、基準日を併記する */
+    + statusDot(n)+esc(KT('meta_updated_ago',{n:n.days, d:n.updated||'—', b:asOfDate() || buildDate()}))+'</div>'
     /* R2: ナレッジ詳細のラベルも多言語化（最もよく読まれるビューなので取りこぼしは致命的）。
        「来源 N 个域名」は内部の集計口径だったので、単純に出典数へ変更。 */
     + '<div class="infobox" style="margin-bottom:10px"><dl>'
+    + '<dt>'+esc(KT('meta_status'))+'</dt><dd>'+esc(statusLabel(noteStatus(n)))+'</dd>'
     + '<dt>'+esc(KT('meta_verified'))+'</dt><dd>'+esc(n.verified_at||'—')+'</dd>'
     + '<dt>'+esc(KT('meta_nextreview'))+'</dt><dd>'+nextReview+'</dd>'
-    + '<dt>'+esc(KT('note_sources'))+'</dt><dd>'+(n.sources||[]).length+'</dd>'
+    /* R40（P1-10）：件数は本文描画後に、実際に出した出典リンクの数で埋める */
+    + '<dt>'+esc(KT('note_sources'))+'</dt><dd id="src-count">—</dd>'
     + '<dt>'+esc(KT('note_backlinks'))+'</dt><dd>'+backs.length+'</dd>'   /* R27 */
     + '</dl></div>'
     + (claims.length
@@ -1526,10 +1701,7 @@ function renderDetail(){
     + '<div class="toc" id="toc"></div><div id="mdbody"></div>'
     + '<h2>'+esc(KT('note_backlinks'))+' ('+backs.length+')</h2>'   /* R27 */
     + (backs.length ? '<ul>'+backs.map(b=>'<li><a data-note="'+esc(b.id)+'" href="#note/'+esc(b.id)+'">'+esc(b.title)+'</a></li>').join('')+'</ul>' : '<p class="muted">—</p>')
-    + ((n.sources && n.sources.length)
-        ? '<h2>'+esc(KT('note_sources'))+' ('+n.sources.length+')</h2><div class="csrc">'
-          + n.sources.map(s2 => '<a class="srclink" href="'+esc(s2.url)+'" target="_blank" rel="noopener noreferrer">🔗 '+esc(s2.label)+'</a>').join('') + '</div>'
-        : '');
+    + '<div id="src-block"></div>';
   /* R16：本文はほぼ全件が「# タイトル」で始まり、直前で <h1> として
      題名を描いているので、同じ文字列が 2 回続いて出ていた（実測 79/79 件）。
      1 ページに h1 が 2 つある状態でもあった。
@@ -1548,6 +1720,19 @@ function renderDetail(){
   };
   const mdBody = stripDupH1((n.content||'').replace(/```chart[\s\S]*?```/g, ''));
   $('#mdbody').innerHTML = n.type === 'digest' ? digestTimelineHTML(mdBody) : renderMD(mdBody);
+  /* R40（P1-10）：出典一覧＝データの sources ∪ 本文で実際にリンクになった外部 URL。
+     従来は sources だけを数えていたため「出典リンク 0」なのに本文に出典がある、
+     という食い違いがあった。重複（同じ URL）は 1 本にまとめ、ラベルは
+     リポジトリ名や文書名など読める形にする（sourceLabel）。 */
+  const srcs = collectSources(n, $('#mdbody'));
+  const sc = $('#src-count'); if(sc) sc.textContent = String(srcs.length);
+  const sb = $('#src-block');
+  if(sb) sb.innerHTML = srcs.length
+    ? '<h2>'+esc(KT('note_sources'))+' ('+srcs.length+')</h2><div class="csrc">'
+      + srcs.map(x => '<a class="srclink" href="'+esc(x.url)+'" target="_blank" rel="noopener noreferrer" title="'+esc(x.url)+'">🔗 '+esc(x.label)+'</a>').join('') + '</div>'
+    : '';
+  const nb = $('#note-back');
+  if(nb) nb.onclick = () => { state.sel = null; renderNoteList(); renderDetail(); syncHash(true); window.scrollTo({top:0}); };
   const toc = $('#toc'); const hs = el.querySelectorAll('#mdbody h2, #mdbody h3');
   toc.innerHTML = hs.length ? esc(KT('d_toc')) + Array.from(hs).map((h,i)=>{
     h.id = 'h-'+i; const pad = h.tagName==='H3' ? '　' : '';
@@ -1735,7 +1920,7 @@ function renderSearchView(){
         +   (c.section ? ' ・ '+escHi(c.section, toks) : '')+'</span></a>';
     }, '');
 
-  h += group('videos', KT('sr_videos'), vids, e => {
+  if(VIDEOS.length) h += group('videos', KT('sr_videos'), vids, e => {
       const src = noteById(e.note_id);
       return '<a class="sr-item" href="#videos" data-sr-tab="videos">'
         + '<span class="sr-t">'+escHi(e.text, toks)+'</span>'
@@ -1878,6 +2063,32 @@ function graphEntitySet(){
 function graphEntitySet2(){
   return [...graphEntitySet()].filter(nm => entityMentionNotes(nm).length > 0).sort();
 }
+/* R40（P1-8）：関連図に出すキーワードと、そのキーワードを結ぶナレッジ。
+   kw.top は語と「登場ナレッジ数（docs）」しか持たないので、公開ナレッジの本文中の
+   出現回数が多い順に docs 件だけ結ぶ（データ側の件数と線の本数を一致させる。
+   本文全体を素直に照合すると、テンプレ段落に出る語が全 digest に線を引いてしまう）。
+   旧データ（kw.top 空）では watchlist をそのまま使う。 */
+function graphKwNotes(){
+  const out = [];
+  const top = kwTop(12).filter(([, n]) => n >= 2);
+  const fromTop = ((DATA.kw && DATA.kw.top) || []).length > 0;
+  const pub = pubNotes();
+  for(const [kw, docs] of top){
+    let ids;
+    if(fromTop){
+      const k = kw.toLowerCase();
+      ids = pub.map(n => [n.id, noteHay(n).split(k).length - 1])
+        .filter(([, c]) => c > 0)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, docs)
+        .map(([id]) => id);
+    } else {
+      ids = ((DATA.watchlist || {})[kw] || []).slice();
+    }
+    if(ids.length) out.push([kw, ids]);
+  }
+  return out;
+}
 function buildGraph(){
   const rnd = mulberry32(42);
   const nodes = [], edges = [], idx = {};
@@ -1915,11 +2126,14 @@ function buildGraph(){
   const gTopics = new Set(gpub.map(n => n.topic));
   for(const n of gpub) add(n.id, n.title.split('（')[0], 'note', n.topic, 7);
   for(const p of Object.keys(DATA.stats.topics)) if(gTopics.has(p)) add('topic:'+p, topicName(p), 'topic', p, 9);
-  for(const [kw, ids] of Object.entries(DATA.watchlist))
-    if((ids||[]).some(id => gpubIds.has(id))) add('kw:'+kw, kw, 'hotword', null, 3.5);
+  /* R40（P1-8）：キーワードの丸は kw.top（公開分の登場ナレッジ数）から取る。
+     watchlist は新しいビルドで「直近の新着」だけになり、2 語しか残らないため。 */
+  const kwMap = graphKwNotes();
+  for(const [kw, ids] of kwMap)
+    if(ids.some(id => gpubIds.has(id))) add('kw:'+kw, kw, 'hotword', null, 3.5);
   for(const n of gpub){
     if(idx['topic:'+n.topic] != null) edges.push([idx[n.id], idx['topic:'+n.topic]]);
-    for(const [kw, ids] of Object.entries(DATA.watchlist))
+    for(const [kw, ids] of kwMap)
       if(idx['kw:'+kw] != null && ids.includes(n.id)) edges.push([idx[n.id], idx['kw:'+kw]]);
     (n.related||[]).forEach(r => { if(idx[r] != null && gpubIds.has(r)) edges.push([idx[n.id], idx[r]]); });
   }
@@ -2007,8 +2221,8 @@ function drawGraph(hover){
         state.boardTopic = n.topic; state.boardLine = ''; switchTab('boards'); renderBoards();
       }
     }
-    else if(n.kind === 'hotword' && entityRegistered(n.title)) openEntity(n.title);
-    else { state.q = n.title; $('#q').value = state.q; switchTab('videos'); renderVideos(); }
+    /* R40：キーワードは語で検索（動画データへ送っていたが、動画データは非公開） */
+    else if(n.kind === 'hotword') searchFor(n.title);
   };
 }
 function graphToggle(setOpen){
@@ -2029,13 +2243,18 @@ function syncGraphToggleLabel(){
   btn.textContent = KT(cv.style.display === 'none' ? 'g_open' : 'g_close');
 }
 function renderHub(){
-  const wh = Object.entries(DATA.watchlist).filter(([,ids])=>ids.length)
-    .map(([k,ids]) => [k, ids.length]).sort((a,b)=>b[1]-a[1]);
+  /* R40（P1-8）：「プラットフォーム横断キーワード」は動画データ前提の名前で、
+     中身は社内ウォッチ語だった。公開分の登場ナレッジ数（kw.top）に置き換え、
+     押すと語で検索する。 */
+  const hh = $('#g-hub-h'); if(hh) hh.textContent = KT('g_hub');
+  const wh = kwTop(12);
   $('#hub-list').innerHTML = wh.map(([k,n]) =>
-    '<div class="hubitem" data-kw="'+esc(k)+'"><span>'+esc(k)+'</span><span class="chip">'+esc(KT('unit_notes',{n}))+'</span></div>').join('')
+    '<div class="hubitem" data-kw="'+esc(k)+'" role="button" tabindex="0"><span>'+esc(k)+'</span><span class="chip">'+esc(KT('unit_notes',{n}))+'</span></div>').join('')
     || '<p class="muted">—</p>';
-  $('#hub-list').querySelectorAll('[data-kw]').forEach(el => el.onclick = () => {
-    state.q = el.dataset.kw; $('#q').value = state.q; switchTab('videos'); });
+  $('#hub-list').querySelectorAll('[data-kw]').forEach(el => {
+    el.onclick = () => searchFor(el.dataset.kw);
+    el.onkeydown = e => { if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); searchFor(el.dataset.kw); } };
+  });
   /* R1: モード切替ボタンのラベルは JS が上書きするため、data-i18n だけでは追随しない。
      切替時と描画時の両方で KT() を通す。 */
   const modeLabel = () => KT(state.graphMode === 'entity' ? 'g_to_note' : 'g_to_entity');
@@ -2053,6 +2272,7 @@ function renderHub(){
     $('#graph-mode').textContent = modeLabel();
     G = null;
     if($('#graph-canvas').style.display !== 'none') drawGraph(null);
+    renderGraphText();                       /* R40：説明と凡例も切り替える */
   };
   /* R26①：公開ナレッジに登場するエンティティが 1 つも無いときは、
      エンティティ図が空になるのでナレッジ図を既定にし、切替ボタンも出さない
@@ -2070,6 +2290,56 @@ function renderHub(){
     }
   }
   $('#graph-mode').textContent = modeLabel();
+  renderGraphText();
+}
+/* R40（P0-5 / P1-8）：説明文・凡例・関係の一覧を「いま描いている図」に合わせて作る。
+   従来は「円＝エンティティ」という説明と、YouTube / TikTok などの凡例が固定で出ていたが、
+   実際に描かれていたのはナレッジ・テーマ・キーワードだった。 */
+function renderGraphText(){
+  const ent = state.graphMode === 'entity';
+  const d = $('#g-desc'); if(d) d.textContent = KT(ent ? 'g_desc' : 'g_desc_notes');
+  const lg = $('#g-legend');
+  if(lg){
+    const sw = (style, label) => '<div class="meta g-lg"><span class="g-sw" style="'+style+'"></span>'+esc(label)+'</div>';
+    let h = '';
+    if(ent){
+      Object.keys(LINE_COLORS).forEach(k => { h += sw('background:'+LINE_COLORS[k]+';border-radius:50%', lineName(k)); });
+    } else {
+      h += sw('background:var(--accent);transform:rotate(45deg);border-radius:1px', KT('g_lg_topic'));
+      const tps = [...new Set(pubNotes().map(n => n.topic))];
+      h += '<div class="meta g-lg-h">'+esc(KT('g_lg_note'))+'</div>';
+      h += tps.map(t => sw('background:'+pcolor(t)+';border-radius:50%', topicName(t))).join('');
+      h += sw('background:'+(isLight() ? '#6a7686' : '#5f6a7d')+';border-radius:50%;width:7px;height:7px', KT('g_kw'));
+    }
+    /* 動画プラットフォームの凡例は、プラットフォームのデータがあるときだけ */
+    const pfs = (DATA.stats.platforms || []).filter(p => VIDEOS.some(e => e.platform === p));
+    if(pfs.length) h += pfs.map(p => sw('background:'+pcolor(p)+';border-radius:50%', topicName(p))).join('');
+    lg.innerHTML = h;
+  }
+  const gl = $('#graph-list');
+  if(gl){
+    const kwMap = graphKwNotes();
+    const kwOf = id => kwMap.filter(([, ids]) => ids.includes(id)).map(([k]) => k);
+    const byTopic = {};
+    pubNotes().forEach(n => (byTopic[n.topic] = byTopic[n.topic] || []).push(n));
+    const topics = Object.keys(byTopic).sort((a, b) => byTopic[b].length - byTopic[a].length);
+    gl.innerHTML = '<h2 class="panel-title">'+esc(KT('g_list_h'))+'</h2>'
+      + '<p class="footnote" style="margin:0 0 8px">'+esc(KT('g_list_d'))+'</p>'
+      + topics.map(t => '<div class="g-grp"><div class="g-grp-h" data-board="'+esc(t)+'" role="button" tabindex="0">'
+          + '<span class="g-sw" style="background:'+pcolor(t)+';border-radius:50%"></span>'
+          + esc(topicName(t))+' <span class="muted">'+esc(KT('unit_notes',{n:byTopic[t].length}))+'</span></div>'
+          + byTopic[t].map(n => '<div class="g-row"><a href="#note/'+esc(n.id)+'" data-note="'+esc(n.id)+'">'+esc(n.title)+'</a>'
+            + (kwOf(n.id).length ? '<span class="g-kws">'+kwOf(n.id).map(k => '<button type="button" class="tagchip" data-kwq="'+esc(k)+'">'+esc(k)+'</button>').join('')+'</span>' : '')
+            + '</div>').join('')
+          + '</div>').join('');
+    gl.querySelectorAll('[data-note]').forEach(a => a.onclick = e => { e.preventDefault(); openNote(a.dataset.note); });
+    gl.querySelectorAll('[data-kwq]').forEach(b => b.onclick = () => searchFor(b.dataset.kwq));
+    gl.querySelectorAll('[data-board]').forEach(b => {
+      const go = () => { state.boardTopic = b.dataset.board; state.boardLine = ''; switchTab('boards'); };
+      b.onclick = go;
+      b.onkeydown = e => { if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); go(); } };
+    });
+  }
 }
 
 /* ---------- 框架 ---------- */
@@ -2122,19 +2392,38 @@ function renderHeader(){
   if(el) el.textContent = KT('updated', {d: buildDate()});
   const fu = document.getElementById('foot-updated');
   if(fu) fu.textContent = KT('updated', {d: buildDate()});
+  /* R40（P2 H24）：検索欄の例示語は、実際に結果が出る語（kw.top の上位）から作る。
+     固定の「Seedance / Kling」は公開ナレッジに 1 件も無く、例のとおり打つと 0 件だった。
+     「/」だけのヒントは意味が伝わらないので語を添える（スマホでは CSS で隠す）。 */
+  const qi = $('#q');
+  if(qi){
+    const ex = kwTop(3).map(([k]) => k);
+    qi.setAttribute('placeholder', ex.length ? KT('search_ph2', {ex: ex.join(' / ')}) : KT('search_ph'));
+  }
+  const qh = $('#q-hint'); if(qh) qh.textContent = KT('q_hint');
   const fr = document.getElementById('foot-rights');
   if(fr) fr.textContent = KT('f_rights', {y: (DATA.built_at || '').slice(0,4) || new Date().getFullYear()});
 }
 const buildDate = () => (DATA.built_at || '').slice(0,10) || '—';
+/* R40：検証済みの結論の数。データ側の集計（stats.claims_verified）が正本。
+   欠落（旧データ）は 0。 */
+function verifiedClaimCount(){
+  const v = Number((DATA.stats || {}).claims_verified);
+  return v > 0 ? Math.floor(v) : 0;
+}
 
 /* R1: ヒーロー。公開ナレッジハブの定石に合わせ「1 画面目で何者かを言い切る」層を新設。
    このページ唯一の h1 を持ち（従来ホームに h1 が 0 個だった）、指標 3 点と単一の主 CTA を置く。
    UI 言語とナレッジ本文の言語が異なる場合は .lang-note で明示する（本文の言語を偽装しない）。 */
 function renderHero(){
   const s = DATA.stats;
-/* R12：遮断済みナレッジを数に含めない（一覧の行数と一致させる） */
-  const claims = (DATA.conclusions || []).filter(c => c.kind === 'claim' && noteById(c.note_id)).length;
-  const exps = pubNotes().filter(n => n.type === 'experiment').length;
+  /* R40（P0-1 / P0-4）：「検証済みの結論」はデータ側の stats.claims_verified
+     （検証済みかつ見直し期限内のナレッジに属する claim の数）だけを使う。
+     従来は claim 全件を「検証済み結論」と数えていた。旧データでは欠落＝0 で、
+     0 のときは指標ごと出さない（「0 件の検証済み結論」を看板に掲げない）。 */
+  const claims = verifiedClaimCount();
+  /* R40（P1-3）：実験レポートの数は「実施済み」だけ（draft＝未実施の計画は数えない） */
+  const exps = pubNotes().filter(n => n.type === 'experiment' && noteStatus(n) !== 'draft').length;
   const noteCnt = pubNotes().length;
   const stat = (v, k) => '<div class="hero-stat"><div class="hv">'+v+'</div><div class="hk">'+esc(k)+'</div></div>';
   /* R5: 2 カラム化。計測したところヒーローは幅 1352px に対して本文列が 543px しか
@@ -2149,7 +2438,7 @@ function renderHero(){
     +   '<h1>'+esc(KT('hero_h1'))+'</h1>'
     +   '<p class="hero-lead">'+esc(KT('hero_lead'))+'</p>'
     +   '<div class="hero-stats">'
-    +     stat(noteCnt, KT('st_notes')) + stat(claims, KT('st_concl')) + stat(exps, KT('st_exp'))
+    +     stat(noteCnt, KT('st_notes')) + (claims > 0 ? stat(claims, KT('st_concl')) : '') + stat(exps, KT('st_exp'))
     +   '</div>'
     +   '<div class="hero-cta">'
     +     '<a class="btn-primary" href="mailto:info@onewonder.co.jp" rel="noopener noreferrer">'+esc(KT('cta_contact'))+'</a>'
@@ -2297,8 +2586,13 @@ function render(){
   else if(state.tab==='notes'){ renderNoteList(); renderDetail(); }
   else if(state.tab==='entity') renderEntityView();
   else if(state.tab==='search') renderSearchView();
-  else if(state.tab==='videos'){ renderVideoFacets(); renderVideos();
-    chartHist($('#c-hist')); chartCats($('#c-cats')); chartMonths($('#c-mon')); chartTop15($('#c-top')); }
+  else if(state.tab==='videos'){
+    /* R40（P0-2）：記録が 0 件のときは集計も「結論」も出さない。
+       従来は n=0 のまま「尺は 7 秒未満に最も集中（0 件）」という結論文と空の図表 4 枚、
+       押せる CSV・フィルタが出ていた。 */
+    if(!VIDEOS.length){ renderVideosEmpty(); }
+    else { renderVideoFacets(); renderVideos();
+      chartHist($('#c-hist')); chartCats($('#c-cats')); chartMonths($('#c-mon')); chartTop15($('#c-top')); } }
   else { renderHub(); }
 }
 document.querySelectorAll('nav button').forEach(b => b.onclick = () => switchTab(b.dataset.tab));
@@ -2373,7 +2667,8 @@ function updateQCount(q){
   /* R12-b1：この文言は R1 から search_hit として 7 言語ぶん用意されていたのに
      結線されておらず、R11 で同じ用途の q_counts を新設して二重になっていた。
      既存キーに寄せて q_counts は削除した（用語も「記録」に統一）。 */
-  el.textContent = KT('search_hit',{a:notes, b:ents, c:concls});
+  /* R40：動画データが 0 件（非公開）の間は件数表示にも出さない */
+  el.textContent = KT(VIDEOS.length ? 'search_hit' : 'search_hit_nov',{a:notes, b:ents, c:concls});
   syncQHint();                               /* R21-4 */
 }
 function syncThemeIcon(){
@@ -2533,12 +2828,14 @@ if(matchMedia('(hover: hover)').matches){
     pv.style.left = Math.max(8, left) + 'px';
     pv.style.top = Math.max(8, top) + 'px';
   };
+  /* R40（P2 H20）：本文を読んでいる間は、一覧や被リンクの上に浮く予覧が本文を覆っていた。
+     ナレッジを開いている（state.sel がある）間は一覧の予覧を出さず、
+     本文ペイン内（被リンク）の予覧もやめる。 */
   const pvHit = t => {
     const el = t && t.closest ? t.closest('[data-note]') : null;
     if(!el) return null;
     if(el.classList.contains('ccard')) return el;                       /* 结论卡片 */
-    if(el.classList.contains('item') && el.closest('.list')) return el; /* 笔记列表条目 */
-    if(el.tagName === 'A' && el.closest('#note-detail')) return el;     /* 反链条目 */
+    if(el.classList.contains('item') && el.closest('.list') && !state.sel) return el; /* 笔记列表条目 */
     return null;
   };
   document.addEventListener('mouseover', e => {
@@ -2625,9 +2922,10 @@ function mountIntro(){
      --n（文字数）を CSS へ渡し、語が長い言語でも 1 行に収まるようにする。 */
   const dict = window.KB_I18N[window.KB_LANG] || window.KB_I18N.ja;
   const chars = dict.intro_title || window.KB_I18N.ja.intro_title;
-  /* R12：オープニングの件数もヒーローと同じ集計にそろえる */
-  const claims = (DATA.conclusions||[]).filter(c => c.kind === 'claim' && noteById(c.note_id)).length;
-  const sub = KT('intro_sub', {n: pubNotes().length, t: topicN, c: claims});
+  /* R12：オープニングの件数もヒーローと同じ集計にそろえる。
+     R40：検証済みの結論が 0 件（旧データを含む）なら、その句ごと出さない。 */
+  const claims = verifiedClaimCount();
+  const sub = KT(claims > 0 ? 'intro_sub' : 'intro_sub0', {n: pubNotes().length, t: topicN, c: claims});
   /* 語中の空白（韓国語「널리지 허브」など）は幅だけ確保する専用スパンにする。
      空の <span> は flex コンテナ内で潰れて語の区切りが消えてしまうため。 */
   const charSpan = (c, i) => c === ' '
@@ -2828,6 +3126,7 @@ const startBG = () => {
 };
 startBG();
 let rT; addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(startBG, 350); });
+syncVideoTab();                            /* R40（P0-2） */
 render();
 
 /* Lab experiment badges (confidence/reproducible), used by card flow + detail view.
@@ -3233,6 +3532,15 @@ syncTabAria();
    Only filled when DATA.public is set (same gating as the section switcher);
    without it the dynamic card grids stay empty while the static lab markup
    (hero, research directions, CTA) remains in the container. */
+/* R40：実験の日付。実験日（n.date）が無ければ検証日 → 更新日 → 作成日の順 */
+/* function 宣言にしているのは、#lab/experiment/<id> で直接開いたとき
+   ルーティング（このファイルの前方）から先に呼ばれるため（const だと TDZ で落ちる）。 */
+function expDate(n){ return n.date || n.verified_at || n.updated || n.created || ''; }
+function expDateLabel(n){
+  return n.date ? KT('exp_date', {d: n.date})
+    : (expDate(n) ? KT('updated', {d: expDate(n)}) : KT('exp_date', {d: '—'}));
+}
+function clip(t, k){ t = String(t || ''); return t.length > k ? t.slice(0, k) + '…' : t; }
 function renderExperimentDetail(){
   const el = document.getElementById('lab-detail');
   if(!el) return;
@@ -3250,19 +3558,23 @@ function renderExperimentDetail(){
   el.innerHTML =
     '<p style="margin:0 0 14px"><button class="btn" id="lab-detail-back">' + esc(KT('exp_back')) + '</button></p>'
     + '<h1 style="font-size:24px;margin:0;letter-spacing:-.01em">' + esc(n.title) + '</h1>'
-    + '<h2>' + esc(KT('exp_hypo')) + '</h2><p>' + inline(n.hypothesis || '—') + '</p>'
-    + '<h2>' + esc(KT('exp_method')) + '</h2><p>' + inline(n.method || '—') + '</p>'
-    + '<h2>' + esc(KT('exp_result')) + '</h2><p>' + inline(n.result || '—') + '</p>'
-    + '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:14px 0 4px">'
-    + confBadge(n.confidence) + reproBadge(n.reproducible)
-    + '<span class="meta">' + esc(KT('exp_date', {d: n.date || '—'})) + '</span></div>'
-    + '<h2>' + esc(KT('exp_evidence')) + '</h2>'
+    /* R40（P1-2 / P1-3）：状態（実施済みか計画のみか・検証済みか）を先頭に出す。
+       仮説・方法・結論の欄はデータに無いときは「—」を並べず、要約を「概要」として出す。 */
+    + '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0 4px">'
+    + statusChip(n) + langBadge(n) + confBadge(n.confidence) + (n.reproducible ? reproBadge(n.reproducible) : '')
+    + '<span class="meta">' + esc(expDateLabel(n)) + '</span></div>'
+    + (noteStatus(n) === 'draft' ? '<p class="lang-note" style="margin:10px 0 0">'+esc(KT('exp_planned_note'))+'</p>' : '')
+    + (n.hypothesis ? '<h2>' + esc(KT('exp_hypo')) + '</h2><p>' + inline(n.hypothesis) + '</p>' : '')
+    + (n.method ? '<h2>' + esc(KT('exp_method')) + '</h2><p>' + inline(n.method) + '</p>' : '')
+    + (n.result ? '<h2>' + esc(KT('exp_result')) + '</h2><p>' + inline(n.result) + '</p>'
+        : '<h2>' + esc(KT('exp_summary')) + '</h2><p>' + esc(n.summary || '—') + '</p>')
     + (evs.length
-        ? '<div style="display:flex;flex-direction:column;gap:8px">'
+        ? '<h2>' + esc(KT('exp_evidence')) + '</h2>'
+          + '<div style="display:flex;flex-direction:column;gap:8px">'
           + evs.map((e, i) => '<div class="ev-link" data-note="' + esc(e.id) + '">'
             + '<span><span class="muted" style="margin-right:8px">' + String(i + 1).padStart(2, '0') + '</span>' + esc(e.title) + '</span>'
             + '<span class="m">' + esc(KT('exp_full')) + '</span></div>').join('') + '</div>'
-        : '<p class="muted">—</p>')
+        : '')
     + '<p style="margin-top:18px"><button class="btn" id="lab-detail-full">' + esc(KT('exp_full')) + '</button></p>';
   $('#lab-detail-back').onclick = closeExperiment;
   $('#lab-detail-full').onclick = () => { switchSection('intel'); openNote(n.id); };
@@ -3292,53 +3604,45 @@ function renderLab(){
      state.labExp = null にして renderLab だけが呼ばれるため
      （詳細側に置くと h2 のまま戻ってしまう）。 */
   setHeadLevel(document.getElementById('h-view-lab'), state.labExp ? 'h2' : 'h1');
-  /* 实验卡片流：type=experiment，按实验日期倒序 */
-  const grid = document.getElementById('lab-exp-grid');
-  const exps = DATA.notes.filter(n => n.type === 'experiment' && isPublishable(n)).slice()
-    .sort((a,b) => String(b.date||'').localeCompare(String(a.date||''))
-      || String(b.updated||'').localeCompare(String(a.updated||'')));
-  const expCnt = document.getElementById('lab-exp-count');
-  if(expCnt) expCnt.textContent = KT('unit_notes', {n: exps.length});
-  if(grid){
-    grid.innerHTML = exps.length ? exps.map(n =>
-      /* R12-b2：進行中カード（data-lab-note）には role と tabindex があるのに、
-         ラボの主役である実験カードには無く、キーボードだけでは開けなかった。 */
-      '<div class="bcard" data-lab-exp="'+esc(n.id)+'" role="button" tabindex="0">'
+  /* R40（P1-3）：実験は「実施済み」と「計画のみ（draft＝未実施）」に分ける。
+     従来は 8 件をまとめて「実験レポート」と数え、うち 4 件が未実施の計画だった。
+     また「進行中の実験」には完了済みの調査（research）が入っていたので、
+     調査は「完了した調査」として別の枠に出す。
+     日付は実験日（n.date）が無ければナレッジの検証日・更新日を「最終更新」として出す
+     （「実験日 —」を並べない）。 */
+  const byDate = (a,b) => String(expDate(b)).localeCompare(String(expDate(a)))
+    || String(b.updated||'').localeCompare(String(a.updated||''));
+  const pubAll = DATA.notes.filter(isPublishable);
+  const exps = pubAll.filter(n => n.type === 'experiment' && noteStatus(n) !== 'draft').sort(byDate);
+  const planned = pubAll.filter(n => (n.type === 'experiment' || n.type === 'research') && noteStatus(n) === 'draft').sort(byDate);
+  const research = pubAll.filter(n => n.type === 'research' && noteStatus(n) !== 'draft').sort(byDate);
+  const card = (n, attr) => '<div class="bcard" '+attr+'="'+esc(n.id)+'" role="button" tabindex="0">'
       + '<div class="bcard-name">'+esc(n.title)+'</div>'
-      + '<div class="exp-result">'+esc(n.result||'')+'</div>'
-      + '<div class="exp-meta">'+confBadge(n.confidence)
-      + '<span class="meta">'+esc(KT('exp_date', {d: n.date || '—'}))+'</span></div>'
-      + '</div>').join('')
-      : '<p class="muted" style="margin:0">'+esc(KT('lab_empty_exp'))+'</p>';
-    grid.querySelectorAll('[data-lab-exp]').forEach(c => {
-      const go = () => openExperiment(c.dataset.labExp);
-      c.onclick = go;
-      c.onkeydown = e => { if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); go(); } };
+      + '<div class="exp-result">'+esc(clip(n.result || n.summary || '', 160))+'</div>'
+      + '<div class="exp-meta">'+statusChip(n)+langBadge(n)+confBadge(n.confidence)
+      + '<span class="meta">'+esc(expDateLabel(n))+'</span></div>'
+      + '</div>';
+  const fill = (id, cntId, list, attr, empty, go) => {
+    const g = document.getElementById(id);
+    const c = document.getElementById(cntId);
+    if(c) c.textContent = KT('unit_notes', {n: list.length});
+    if(!g) return;
+    const panel = g.closest('.panel');
+    /* R29#3：0 件の枠は出さない（実施済みの枠だけは空状態の文言を出す） */
+    if(panel && id !== 'lab-exp-grid') panel.hidden = list.length === 0;
+    g.innerHTML = list.length ? list.map(n => card(n, attr)).join('')
+      : '<p class="muted" style="margin:0">'+esc(KT(empty))+'</p>';
+    g.querySelectorAll('['+attr+']').forEach(el => {
+      const id2 = el.getAttribute(attr);
+      el.onclick = () => go(id2);
+      el.onkeydown = e => { if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); go(id2); } };
     });
-  }
-  /* 进行中的实验：研究候选（research），保持按 updated 倒序 */
-  const labs = DATA.notes.filter(n => n.type === 'research' && isPublishable(n))
-    .sort((a,b) => String(b.updated||'').localeCompare(String(a.updated||'')));
-  const cnt = document.getElementById('lab-count');
-  if(cnt) cnt.textContent = KT('unit_notes', {n: labs.length});
-  /* R29#3：0 件のときはパネルごと隠す。
-     実測：遮断で research 20 件が全部非公開になり「進行中の実験 0 件 /
-     準備中です。最初の実験を近日公開します。」が 110px 出ていた。
-     看板セクションに 0 が並ぶのは、出さないより印象が悪い。
-     件数が戻れば自動で再表示される。 */
-  { const wip = box.closest('.panel'); if(wip) wip.hidden = labs.length === 0; }
-  box.innerHTML = labs.length ? labs.map(n =>
-    '<div class="bcard" data-lab-note="'+esc(n.id)+'" role="button" tabindex="0">'
-    + '<div class="bcard-name">'+esc(n.title)+'</div>'
-    + '<div class="bcard-meta">'+esc(n.summary||'')+'</div>'
-    + '<div class="bcard-kw"><span>'+esc(KT('updated', {d: n.updated || '—'}))+'</span></div>'
-    + '</div>').join('')
-    : '<p class="muted" style="margin:0">'+esc(KT('lab_empty_wip'))+'</p>';
-  box.querySelectorAll('[data-lab-note]').forEach(c => {
-    const go = () => { switchSection('intel'); openNote(c.dataset.labNote); };
-    c.onclick = go;
-    c.onkeydown = e => { if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); go(); } };
-  });
+  };
+  const openN = id => { switchSection('intel'); openNote(id); };
+  fill('lab-exp-grid', 'lab-exp-count', exps, 'data-lab-exp', 'lab_empty_exp', openExperiment);
+  fill('lab-experiments', 'lab-count', planned, 'data-lab-plan',
+    'lab_empty_wip', id => (noteById(id) || {}).type === 'experiment' ? openExperiment(id) : openN(id));
+  fill('lab-research', 'lab-research-count', research, 'data-lab-note', 'lab_empty_wip', openN);
   if(state.labExp) renderExperimentDetail();
   else {
     const det = document.getElementById('lab-detail');

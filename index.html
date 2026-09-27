@@ -168,7 +168,7 @@ window.lsJSON = function(k, fallback){
   <!-- R1: 内部運用指標のチップ（調査ウィンドウ経過日数 / 公開ミラー・件数）を撤去し、
        対外的に意味のある「最終更新日」のみ残す。件数はヒーローの指標ブロックへ移設。 -->
   <span class="chip" id="st-updated"></span>
-  <input id="q" type="search" data-i18n-ph="search_ph" data-i18n-aria="search_aria"
+  <input id="q" type="search" data-i18n-aria="search_aria"
     placeholder="ナレッジ・動画データを検索（例：Seedance / Kling / GPT-6 / Claude）" aria-label="サイト内検索">
   <!-- R24：white-space を CSS へ移した。inline のままだと狭幅で上書きできず、
        ラベルを「記録」→「動画データ」に揃えた結果、320px のスペイン語
@@ -229,7 +229,7 @@ window.lsJSON = function(k, fallback){
   <section id="view-notes"><h1 class="sr-only" id="h-view-notes" data-i18n="tab_notes">ナレッジ</h1>
     <div class="cols">
       <div class="list panel" id="note-list" style="padding:6px"></div>
-      <div class="detail" id="note-detail"><p class="muted" data-i18n="note_pick">← 左の一覧からナレッジを選択してください</p></div>
+      <div class="detail" id="note-detail"><p class="muted" data-i18n="note_pick">一覧からナレッジを選択してください</p></div>
     </div>
   </section>
   <section id="view-videos"><h1 class="sr-only" data-i18n="tab_videos">動画データ</h1>
@@ -243,18 +243,24 @@ window.lsJSON = function(k, fallback){
     <div class="panel" id="videos-table"></div>
   </section>
   <section id="view-graph"><h1 class="sr-only" data-i18n="tab_graph">関連分析</h1>
+    <!-- R40（P0-5 / P1-8）：説明・凡例は「実際に描いているもの」に合わせて renderHub が
+         組み立てる（ナレッジ＋テーマ＋キーワード。動画プラットフォームの凡例は、
+         プラットフォームのデータがあるときだけ出す）。静的な data-i18n を付けないのは、
+         applyI18N が固定文言へ戻してしまうため。
+         スマホ幅（≤480px）では図が読めない大きさになるので、図の代わりに
+         「関係の一覧」（#graph-list）を主に見せる。一覧は PC でも図の下に出す
+         （図の中身は canvas なので、読み上げや検索からはこの一覧だけが辿れる）。 -->
     <div class="gwrap">
-      <div style="flex:1;min-width:0">
-        <p class="kbd" data-i18n="g_desc">既定はエンティティ共起図です。円＝エンティティ（事業ラインで色分け、大きさ＝言及ナレッジ数）、線＝同一ナレッジ内で 2 回以上の共起。円をクリックすると集約ビューが開きます。ナレッジ関連図に切り替えることもできます。</p>
-        <p><button class="btn" id="graph-toggle" data-i18n="g_open">関連図を開く</button> <button class="btn" id="graph-mode" data-i18n="g_to_note">ナレッジ図に切り替え</button></p>
+      <div class="gmain">
+        <p class="kbd g-desc" id="g-desc"></p>
+        <p class="g-ctl"><button class="btn" id="graph-toggle" data-i18n="g_open">関連図を開く</button> <button class="btn" id="graph-mode" data-i18n="g_to_note">ナレッジ図に切り替え</button></p>
         <canvas id="graph-canvas" width="880" height="540" style="display:none"></canvas>
+        <div class="panel" id="graph-list"></div>
       </div>
       <aside>
-        <div class="panel" style="margin-top:0"><h2 class="panel-title"><span data-i18n="g_hub">プラットフォーム横断キーワード</span></h2><div id="hub-list"></div></div>
+        <div class="panel" style="margin-top:0"><h2 class="panel-title"><span id="g-hub-h"></span></h2><div id="hub-list"></div></div>
         <div class="panel"><h2 class="panel-title"><span data-i18n="g_legend">凡例</span></h2>
-          <div class="meta"><span class="dot" style="background:#ff6b6b"></span>YouTube　<span class="dot" style="background:#25f4ee"></span>TikTok</div>
-          <div class="meta"><span class="dot" style="background:#e1306c"></span>Instagram　<span class="dot" style="background:#ff2442"></span>小红书 / RED</div>
-          <div class="meta"><span class="dot" style="background:var(--accent)"></span><span data-i18n="g_analysis">分析</span>　<span class="dot" style="background:var(--dim)"></span><span data-i18n="g_kw">キーワード</span></div>
+          <div id="g-legend"></div>
         </div>
       </aside>
     </div>
@@ -285,6 +291,11 @@ window.lsJSON = function(k, fallback){
     <div class="panel">
       <h2 class="sec-h"><span data-i18n="lab_wip">進行中の実験</span> <span class="chip" id="lab-count"></span></h2>
       <div class="cgrid" id="lab-experiments"></div>
+    </div>
+    <!-- R40（P1-3）：完了した調査（type=research）。以前は「進行中の実験」に混ざっていた。 -->
+    <div class="panel">
+      <h2 class="sec-h"><span data-i18n="lab_research">完了した調査</span> <span class="chip" id="lab-research-count"></span></h2>
+      <div class="cgrid" id="lab-research"></div>
     </div>
     <div class="panel">
       <h2 class="sec-h"><span data-i18n="lab_dirs">研究テーマ</span></h2>
@@ -341,6 +352,11 @@ window.lsJSON = function(k, fallback){
           <dd data-i18n="ab_method_heat_d">公開しているナレッジの件数をテーマ別に集計し、件数の多い順に並べています。バーの長さは同じ画面内での相対比較のためのもので、絶対値ではありません。</dd>
           <dt style="white-space:nowrap" data-i18n="ab_method_upd_t">更新頻度</dt>
           <dd data-i18n="ab_method_upd_d">情報速報は継続更新、実験レポートは検証完了ごとに公開しています。検証日と次回見直し日は、検証を終えたナレッジに表示しています。</dd>
+          <!-- R40（P2 G05）：GitHub 版（ow-open-knowledge の knowledge-notes/）への導線と、
+               件数が違う理由（digest を GitHub へ出していない）を明記する。 -->
+          <dt style="white-space:nowrap" data-i18n="about_gh_t">GitHub 版</dt>
+          <dd><span data-i18n="about_gh_d">速報以外のナレッジ（調査・実験）は、Markdown 形式で GitHub でも公開しています。GitHub 版には日々の速報（digest）を含めていないため、件数はこのサイトより少なくなります。</span><br>
+            <a href="https://github.com/onewonderjapan/ow-open-knowledge/tree/main/knowledge-notes" target="_blank" rel="noopener noreferrer" data-i18n="about_gh_link">GitHub で見る（knowledge-notes）→</a></dd>
           <dt style="white-space:nowrap" data-i18n="ab_method_disc_t">免責</dt>
           <dd data-i18n="ab_method_disc_d">掲載内容は公開情報に基づく調査であり、投資判断・法務判断・特定製品の推奨を目的としたものではありません。価格や仕様は各提供元の最新の公式情報をご確認ください。</dd>
         </dl>
@@ -436,6 +452,7 @@ window.lsJSON = function(k, fallback){
         <li><a href="#about" data-foot-sec="about" data-i18n="sec_about">会社情報</a></li>
         <li><a href="#about" data-foot-method="1" data-i18n="f_method">調査手法</a></li>
         <li><a href="mascot.html" data-i18n="mas_t">Wonder4ge 小屋</a></li>
+        <li><a href="https://github.com/onewonderjapan/ow-open-knowledge/tree/main/knowledge-notes" target="_blank" rel="noopener noreferrer" data-i18n="f_gh">GitHub 版ナレッジ</a></li>
       </ul>
     </div>
     <div class="footer-col">
