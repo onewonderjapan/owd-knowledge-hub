@@ -28,11 +28,23 @@
 
 **内容更新不再改动本仓库**。知识库笔记数据发布在 CDN：`https://cdn.onewonder.co.jp/data/kb-data.json`，页面打开时自动拉取最新版。
 
-生产线更新流程（内部 workspace 执行）：
+生产线更新流程（在 S1 上的私有知识库仓库 `knowledge-base` 执行；旧的 W2 `publish-data.sh` 已退役）：
 
 ```bash
-bash scripts/publish-data.sh   # 构建（含泄漏护栏）→ 上传 CDN → 更新 manifest
+# 在私有知识库仓库根目录
+python3 -X utf8 scripts/kb.py build                  # = make build：生成 public-site/kb-data.json（含公开自检）
+python3 -X utf8 scripts/kb.py publish-cdn --dry-run  # 只打印将执行的 aws 命令，确认无误
+python3 -X utf8 scripts/kb.py publish-cdn            # 发布前复检 → 上传 kb-data.json → 更新 manifest → CloudFront 失效
 ```
+
+发布前后可在本仓库确认产物不含内部信息（笔记正文与 conclusions / boards / today / watchlist 等抽取文本都会检查）：
+
+```bash
+node tools/data-check.mjs --file <knowledge-base>/public-site/kb-data.json   # 发布前：本地文件
+node tools/data-check.mjs                                                    # 发布后：CDN 上的实际产物
+```
+
+**部署顺序**：页面（本仓库）与数据（CDN）独立发布。数据格式有新增字段时，先发页面、再发数据——页面对旧数据必须能正常显示且不夸大（例如缺少 `verified` 字段的旧数据按「未验证」处理，`stats.claims_verified` 缺失按 0 处理）。
 
 本仓库只承载页面结构：`index.html` / `mascot.html` 变更才会触发自动部署（GitHub Actions → AWS）。
 
