@@ -87,7 +87,7 @@ ja:{
  e_neighbors:'共起エンティティ', e_mentions:'言及ナレッジ', e_unreg:'未登録のエンティティ', e_of:'Top {a} / 全 {b}',
  /* --- AI ラボ --- */
  lab_h:'AI ラボ',
- lab_lead:'コンテンツ制作と業務の現場で実際に起きた課題を実験に落とし込み、データで検証したうえで、企業で運用できる形の結論にしています。',
+ lab_lead:'コンテンツ制作と業務の現場で実際に起きた課題を実験にし、各レポートには実施済みか計画段階か、検証済みかどうかを明記して公開しています。',
  lab_results:'実施済みの実験', lab_wip:'計画中の実験（未実施）', lab_dirs:'研究テーマ',
  lab_d1n:'制作ラインにおける人と AI の分担',
  lab_d1d:'台本・絵コンテ・編集を人と AI の得意領域で分解し、生産量と品質が最適になる配分を探る。',
@@ -136,7 +136,7 @@ ja:{
  render_fail:'画面の表示中に問題が発生しました。',
  /* <title> と meta[description]（言語切替時に差し替える） */
  doc_title:'OneWonder ナレッジハブ — AI インテリジェンス & AI ラボ',
- doc_desc:'AI 業界の公開情報を継続的に追跡し、検証可能な実験レポートとして公開する OneWonder のナレッジハブ。情報速報・モデル評価・価格指数・自社 AI ラボの実験結果を、根拠リンク付きで公開しています。'
+ doc_desc:'AI 業界の公開情報を継続的に追跡し、出典と検証状態を添えて公開する OneWonder のナレッジハブ。情報速報・調査・自社 AI ラボの実験レポートを掲載し、各ナレッジに検証済み・未検証などの状態を表示しています。'
 },
 en:{
  brand:'OneWonder Knowledge Hub', updated:'Updated {d}',
@@ -200,7 +200,7 @@ en:{
  g_hub:'Keywords (entries mentioning)', g_legend:'Legend', g_analysis:'Analysis', g_kw:'Keyword',
  e_neighbors:'Co-occurring entities', e_mentions:'Entries mentioning this', e_unreg:'Unregistered entities', e_of:'Top {a} of {b}',
  lab_h:'AI Lab',
- lab_lead:'We turn the real problems we hit in content production and operations into experiments, verify them with data, and write up the results as something a company can actually run.',
+ lab_lead:'We turn real problems from content production and day-to-day operations into experiments, and publish each report with its status: whether it has been run, and whether it has been verified.',
  lab_results:'Completed experiments', lab_wip:'Planned experiments (not yet run)', lab_dirs:'Research areas',
  lab_d1n:'Human–AI division of labour in a production line',
  lab_d1d:'Break scripting, storyboarding and editing into what humans and AI are each good at, and find the split that optimises both throughput and quality.',
@@ -242,7 +242,7 @@ en:{
  load_fail_sub:'The content source is temporarily unreachable. Please try again shortly.', retry:'Reload',
  render_fail:'Something went wrong while rendering the page.',
  doc_title:'OneWonder Knowledge Hub — AI Intelligence & AI Lab',
- doc_desc:'OneWonder’s knowledge hub: continuous tracking of public information across the AI industry, published as verifiable experiment reports. Intelligence briefs, model evaluations, a pricing index and our own AI lab’s results, each with source links.'
+ doc_desc:'OneWonder’s knowledge hub: continuous tracking of public information across the AI industry, published with sources and a verification state. Intelligence briefs, research and our AI lab’s experiment reports, each marked verified, not verified and so on.'
 },
 zh:{
  brand:'OneWonder 知识中枢', updated:'最后更新 {d}',
@@ -306,7 +306,7 @@ zh:{
  g_hub:'关键词（出现笔记数）', g_legend:'图例', g_analysis:'分析', g_kw:'关键词',
  e_neighbors:'共现实体', e_mentions:'提及笔记', e_unreg:'未收录的实体', e_of:'Top {a} / 共 {b}',
  lab_h:'AI 实验室',
- lab_lead:'我们把内容生产与业务现场遇到的真实问题做成实验，用数据验证，再把结论写成企业可以直接落地的形态。',
+ lab_lead:'我们把内容生产与业务现场遇到的真实问题做成实验，每份报告都注明是否已执行、是否已验证后再公开。',
  lab_results:'已执行的实验', lab_wip:'计划中的实验（未执行）', lab_dirs:'研究方向',
  lab_d1n:'内容产线的人机分工',
  lab_d1d:'把脚本、分镜、剪辑拆成人与 AI 各自擅长的部分，找到产能与品质的最优配比。',
@@ -348,7 +348,7 @@ zh:{
  load_fail_sub:'内容源临时不可达，请稍后重试。', retry:'重新加载',
  render_fail:'页面渲染时发生了问题。',
  doc_title:'OneWonder 知识中枢 — AI 情报观察 & AI 实验室',
- doc_desc:'OneWonder 的知识中枢：持续跟踪 AI 行业公开信息，并以可验证的实验报告形式公开。情报速览、模型评分、价格指数与自有 AI 实验室的实验结果，全部附带来源链接。'
+ doc_desc:'OneWonder 的知识中枢：持续跟踪 AI 行业公开信息，附来源与验证状态公开。收录情报速览、调研与自有 AI 实验室的实验报告，每条都标注已验证、未验证等状态。'
 },
 /* --- R2 追加：ko / es / fr ---
    選定理由：ko＝近隣市場かつ AI 産業が活発、es＝母語話者数が世界 2 位、fr＝EU / 国際ビジネス。
@@ -416,7 +416,7 @@ ko:{
  g_hub:'키워드 (등장 지식 수)', g_legend:'범례', g_analysis:'분석', g_kw:'키워드',
  e_neighbors:'동시 출현 엔티티', e_mentions:'언급 지식', e_unreg:'미등록 엔티티', e_of:'Top {a} / 전체 {b}',
  lab_h:'AI 랩',
- lab_lead:'콘텐츠 제작과 업무 현장에서 실제로 발생한 과제를 실험으로 만들고, 데이터로 검증한 뒤 기업이 운용할 수 있는 형태의 결론으로 정리합니다.',
+ lab_lead:'콘텐츠 제작과 업무 현장에서 실제로 발생한 과제를 실험으로 만들고, 각 리포트에 실시 여부와 검증 여부를 명시해 공개합니다.',
  lab_results:'실시한 실험', lab_wip:'계획 중인 실험 (미실시)', lab_dirs:'연구 주제',
  lab_d1n:'제작 라인에서의 인간과 AI 의 분담',
  lab_d1d:'대본·스토리보드·편집을 인간과 AI 가 잘하는 영역으로 나누어, 생산량과 품질이 최적이 되는 배분을 찾습니다.',
@@ -458,7 +458,7 @@ ko:{
  load_fail_sub:'콘텐츠 제공원에 일시적으로 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.', retry:'다시 불러오기',
  render_fail:'화면을 표시하는 중 문제가 발생했습니다.',
  doc_title:'OneWonder 널리지 허브 — AI 인텔리전스 & AI 랩',
- doc_desc:'AI 업계의 공개 정보를 지속적으로 추적하고 검증 가능한 실험 리포트로 공개하는 OneWonder 의 널리지 허브. 정보 속보·모델 평가·가격 지수·자사 AI 랩의 실험 결과를 근거 링크와 함께 공개합니다.'
+ doc_desc:'AI 업계의 공개 정보를 지속적으로 추적하고 출처와 검증 상태를 함께 공개하는 OneWonder 의 널리지 허브. 정보 속보·조사·자사 AI 랩의 실험 리포트를 싣고, 각 지식에 검증됨·미검증 등의 상태를 표시합니다.'
 },
 es:{
  brand:'OneWonder Knowledge Hub', updated:'Actualizado el {d}',
@@ -522,7 +522,7 @@ es:{
  g_hub:'Palabras clave (entradas que las mencionan)', g_legend:'Leyenda', g_analysis:'Análisis', g_kw:'Palabra clave',
  e_neighbors:'Entidades coocurrentes', e_mentions:'Entradas que la mencionan', e_unreg:'Entidades no registradas', e_of:'Top {a} de {b}',
  lab_h:'Laboratorio de IA',
- lab_lead:'Convertimos los problemas reales que encontramos en la producción de contenido y en las operaciones en experimentos, los verificamos con datos y redactamos los resultados de forma que una empresa pueda aplicarlos.',
+ lab_lead:'Convertimos problemas reales de la producción de contenido y de las operaciones en experimentos, y publicamos cada informe indicando si se ha ejecutado y si se ha verificado.',
  lab_results:'Experimentos realizados', lab_wip:'Experimentos planificados (sin ejecutar)', lab_dirs:'Líneas de investigación',
  lab_d1n:'Reparto de tareas entre personas e IA en una línea de producción',
  lab_d1d:'Dividir guion, storyboard y edición según lo que hacen mejor las personas y la IA, y encontrar el reparto que optimiza volumen y calidad.',
@@ -564,7 +564,7 @@ es:{
  load_fail_sub:'La fuente de contenido no está disponible temporalmente. Inténtalo de nuevo en unos momentos.', retry:'Recargar',
  render_fail:'Se produjo un problema al mostrar la página.',
  doc_title:'OneWonder Knowledge Hub — Inteligencia de IA y Laboratorio de IA',
- doc_desc:'El knowledge hub de OneWonder: seguimiento continuo de la información pública del sector de la IA, publicada como informes de experimentos verificables. Novedades, evaluaciones de modelos, un índice de precios y los resultados de nuestro laboratorio de IA, cada uno con sus fuentes.'
+ doc_desc:'El knowledge hub de OneWonder: seguimiento continuo de la información pública del sector de la IA, publicada con sus fuentes y su estado de verificación. Resúmenes, investigaciones e informes de experimentos de nuestro laboratorio de IA, cada uno marcado como verificado, sin verificar, etc.'
 },
 fr:{
  brand:'OneWonder Knowledge Hub', updated:'Mis à jour le {d}',
@@ -628,7 +628,7 @@ fr:{
  g_hub:'Mots-clés (analyses les citant)', g_legend:'Légende', g_analysis:'Analyse', g_kw:'Mot-clé',
  e_neighbors:'Entités cooccurrentes', e_mentions:'Analyses qui la citent', e_unreg:'Entités non répertoriées', e_of:'Top {a} sur {b}',
  lab_h:'Laboratoire IA',
- lab_lead:'Nous transformons les problèmes réels rencontrés en production de contenu et en exploitation en expériences, nous les validons par les données, puis nous en tirons des conclusions directement exploitables en entreprise.',
+ lab_lead:'Nous transformons des problèmes réels de production de contenu et d’exploitation en expériences, et publions chaque rapport en indiquant s’il a été réalisé et s’il a été vérifié.',
  lab_results:'Expériences réalisées', lab_wip:'Expériences prévues (non réalisées)', lab_dirs:'Axes de recherche',
  lab_d1n:'Répartition homme–IA dans une chaîne de production',
  lab_d1d:'Découper l’écriture, le storyboard et le montage selon les forces respectives de l’humain et de l’IA, et trouver la répartition qui optimise volume et qualité.',
@@ -670,7 +670,7 @@ fr:{
  load_fail_sub:'La source de contenu est momentanément inaccessible. Merci de réessayer dans un instant.', retry:'Recharger',
  render_fail:'Un problème est survenu lors de l’affichage de la page.',
  doc_title:'OneWonder Knowledge Hub — Veille IA & Laboratoire IA',
- doc_desc:'Le knowledge hub de OneWonder : un suivi continu de l’information publique du secteur de l’IA, publiée sous forme de rapports d’expérience vérifiables. Points de veille, évaluations de modèles, indice tarifaire et résultats de notre laboratoire IA, chacun avec ses sources.'
+ doc_desc:'Le knowledge hub de OneWonder : un suivi continu de l’information publique du secteur de l’IA, publiée avec ses sources et son état de vérification. Synthèses, recherches et rapports d’expérience de notre laboratoire IA, chacun marqué vérifié, non vérifié, etc.'
 },
 /* --- R6 追加：de（ドイツ語）--- */
 de:{
@@ -735,7 +735,7 @@ de:{
  g_hub:'Schlagwörter (Beiträge mit Erwähnung)', g_legend:'Legende', g_analysis:'Analyse', g_kw:'Schlagwort',
  e_neighbors:'Gemeinsam auftretende Entitäten', e_mentions:'Beiträge mit Erwähnung', e_unreg:'Nicht erfasste Entitäten', e_of:'Top {a} von {b}',
  lab_h:'KI-Labor',
- lab_lead:'Wir übersetzen die tatsächlichen Probleme aus Content-Produktion und Betrieb in Experimente, prüfen sie anhand von Daten und formulieren die Ergebnisse so, dass ein Unternehmen sie einsetzen kann.',
+ lab_lead:'Wir machen aus realen Problemen in Content-Produktion und Betrieb Experimente und veröffentlichen jeden Bericht mit der Angabe, ob er durchgeführt und ob er verifiziert wurde.',
  lab_results:'Durchgeführte Experimente', lab_wip:'Geplante Experimente (noch nicht durchgeführt)', lab_dirs:'Forschungsfelder',
  lab_d1n:'Aufgabenteilung zwischen Mensch und KI in der Produktion',
  lab_d1d:'Drehbuch, Storyboard und Schnitt nach den jeweiligen Stärken von Mensch und KI aufteilen und die Verteilung finden, die Menge und Qualität zugleich optimiert.',
@@ -780,7 +780,7 @@ de:{
  load_fail_sub:'Die Inhaltsquelle ist vorübergehend nicht erreichbar. Bitte versuchen Sie es in einem Moment erneut.', retry:'Neu laden',
  render_fail:'Bei der Anzeige der Seite ist ein Problem aufgetreten.',
  doc_title:'OneWonder Knowledge Hub — KI-Beobachtung & KI-Labor',
- doc_desc:'Der Knowledge Hub von OneWonder: fortlaufende Beobachtung öffentlich zugänglicher Informationen der KI-Branche, veröffentlicht als überprüfbare Versuchsberichte. Beobachtungsberichte, Modellbewertungen, ein Preisindex und die Ergebnisse unseres KI-Labors — jeweils mit Quellenangaben.'
+ doc_desc:'Der Knowledge Hub von OneWonder: fortlaufende Beobachtung öffentlich zugänglicher Informationen der KI-Branche, veröffentlicht mit Quellen und Prüfstatus. Kurzberichte, Recherchen und Versuchsberichte unseres KI-Labors, jeweils als verifiziert, nicht verifiziert usw. gekennzeichnet.'
 }};
 
 /* R2: グラフが自動生成する分析文の多言語化。
