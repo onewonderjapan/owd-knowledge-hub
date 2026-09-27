@@ -37,3 +37,8 @@ jobs:
 
       - name: 静的検証
         run: node tools/pr-check.mjs
+
+      # R40（2026-09-27 grok レビュー）：データ由来の値が属性から抜け出さないこと、
+      # data-check が JSON のどこに社内名が入っても落ちることを、fixture で確かめる。
+      - name: 描画・データ検査の回帰テスト
+        run: node tools/render-check.mjs

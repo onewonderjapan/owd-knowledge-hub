@@ -12,6 +12,21 @@
    構成：アプリ全体が kbMain() の中にあり、末尾の kbBoot() が
    データ取得 → kbMain() の順で起動する。
    ========================================================================== */
+/* R40-b1（grok レビュー HIGH）：データ由来の値を属性へ入れるときの決まり。
+   テーマ詳細の出来事カードは recent_events[].change_type を class 属性へ素のまま
+   連結しており、`"><img src=x onerror=…>` のような値で属性から抜け出せた。
+   class は閉じた対応表でだけ決め（未知の値は中立の class）、文字は必ずエスケープする。
+   kbMain の外（トップレベル）に置くのは、tools/render-check.mjs が
+   DOM 無しでこの関数を直接呼んで検査するため。 */
+function kbEsc(s){
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+const EV_CLASS = {new:'new', updated:'updated', watch:'watch'};
+function evCardHTML(e){
+  e = e || {};
+  const k = Object.prototype.hasOwnProperty.call(EV_CLASS, e.change_type) ? EV_CLASS[e.change_type] : 'ev-other';
+  return '<div class="evcard '+k+'"><div class="m">'+kbEsc(e.date || '')+'</div>'+kbEsc(e.title || '')+'</div>';
+}
 function kbMain(){
 const state = {tab:'overview', q:'', topic:'', tag:'', fresh:'', line:'', sel:null, entity:null, entityFrom:'', actExpand:false, conclFull:false, boardTopic:'', boardLine:'', graphMode:'entity', noteView:'list',
   /* R34：状態（検証済み / 未検証 / 見直し期限切れ / つながりなし）での絞り込み。
@@ -212,6 +227,10 @@ const statusDot = n => {
 };
 const statusChip = n => { const k = noteStatus(n);
   return '<span class="st-chip st-'+k+'">'+esc(statusLabel(k))+'</span>'; };
+/* R40-b1：結論に付ける状態チップは、必ず出典ナレッジの noteStatus で決める。
+   出典が辿れない結論は「未検証」。 */
+const conclChip = c => { const src = c && noteById(c.note_id);
+  return src ? statusChip(src) : '<span class="st-chip st-unverified">'+esc(statusLabel('unverified'))+'</span>'; };
 /* R40（P1-1）：本文の言語バッジ。UI 言語と本文の言語が違うときだけ出す。 */
 const langBadge = n => {
   if(!n || !n.lang || n.lang === window.KB_LANG) return '';
@@ -341,7 +360,7 @@ function renderVideoFacets(){
     /* R14-b1：ここだけ PNAME を直参照していたため、絞り込みチップが「小红书」、
        すぐ下の表のバッジが「Xiaohongshu」と、同じタブ内で表記が 2 通りになっていた
        （R12 でバッジ側を topicName に寄せたときの取りこぼし）。 */
-    h += '<span class="tagchip'+(state.vp===p?' on':'')+'" data-pf="'+p+'">'+esc(topicName(p))+' '+counts[p]+'</span>';
+    h += '<span class="tagchip'+(state.vp===p?' on':'')+'" data-pf="'+esc(p)+'">'+esc(topicName(p))+' '+esc(String(counts[p]||0))+'</span>';
   /* R14-b2：5 つの select は aria-label / title / label のどれも無く、
      支援技術には「ラベルの無いコンボボックス」と読まれていた。
      視覚的にも 5 つ並ぶと何の絞り込みか分からないので title も入れる
@@ -448,7 +467,7 @@ function renderVideos(){
       + '<td class="muted" style="max-width:200px;font-size:12.5px">'+esc((e.metric||'').slice(0,28))+'</td>'
       + '<td class="num">'+(e.metric_value != null ? fmtViews(e.metric_value) : '—')
         + (e.metric_type !== 'views' ? '<br><span class="mtag">'+esc(metricLabel(e.metric_type_label))+'</span>' : '') + '</td>'
-      + '<td>'+fmtDur(e.duration_s)+'</td>'
+      + '<td>'+esc(fmtDur(e.duration_s))+'</td>'
       + '<td>'+(e.credibility ? '<span class="cred">'+esc(credName(e.credibility))+'</span>' : '<span class="muted">'+esc(KT('cred_none'))+'</span>')+'</td>'
       /* R29#5：出典列そのものを外したため td も出さない（R28 の「—」表示は撤去）。 */
       + '</tr>';
@@ -672,7 +691,7 @@ function renderConclWall(opts){
       if(!n) continue;
       const srcs = (n.sources || []).slice(0, 5);
       h += '<div class="ccard" data-note="'+esc(c.note_id)+'" style="--pc:'+pcolor(t)+'">'
-        + '<div class="csec">'+esc(c.section)+(c.kind==='claim'?' <span class="chip" style="margin-left:6px">'+esc(KT('c_claim'))+'</span>':'')+'</div>'
+        + '<div class="csec">'+conclChip(c)+esc(c.section)+(c.kind==='claim'?' <span class="chip" style="margin-left:6px">'+esc(KT('c_claim'))+'</span>':'')+'</div>'
         + '<div class="ctxt">'+esc(c.text)+'</div>'
         + '<div class="csrc">'
         + (srcs.length
@@ -787,9 +806,10 @@ function renderWeekConcl(){
     }
   }
   const d = asOfDate() || buildDate();
-  /* 各項目に検証状態を添える（新着でも未検証のものがありうるため） */
-  const vmark = c => '<span class="st-chip st-'+(c.verified ? 'verified' : 'unverified')+'">'
-    + esc(KT(c.verified ? 'kb_verified' : 'ns_unverified'))+'</span>';
+  /* 各項目に検証状態を添える（新着でも未検証のものがありうるため）。
+     R40-b1（grok レビュー）：結論自身の verified ではなく、出典ナレッジの状態で決める
+     （出典が期限切れ・ドラフトならその状態を出す）。 */
+  const vmark = c => conclChip(c);
   return renderPanelShell({title: esc(KT('p_weekconcl')), badge: esc(KT('p_weekconcl_badge', {d})),
     body: (claims.length
       ? '<ol class="wc-list">'+claims.map(c =>
@@ -861,19 +881,22 @@ function renderBoards(){
       + '<div class="grid3" style="align-items:start">'
       + '<div class="panel"><h2 class="panel-title">'+esc(KT('b_top5concl'))+' <span class="chip">'+esc(KT('b_from_concl'))+'</span></h2>'
       + (b.concl.length ? '<ol style="margin:0;padding-left:20px;font-size:13px">'
-        + b.concl.map(c => '<li style="margin:4px 0">'+esc(c.text)+'</li>').join('') + '</ol>'
+        /* R40-b1：boards.*.concl は note_id を持たないので、同じテーマ・同じ本文の
+           conclusions から出典ナレッジを引き、その状態チップを付ける */
+        + b.concl.map(c => { const src = (c && c.note_id) ? c
+              : (DATA.conclusions || []).find(x => x.topic === b.topic && x.text === (c && c.text));
+            return '<li style="margin:4px 0">'+conclChip(src)+' '+esc(c && c.text)+'</li>'; }).join('') + '</ol>'
         : '<p class="muted">'+esc(KT('b_no_concl'))+'</p>') + '</div>'
       + '<div class="panel" style="grid-column:span 2"><h2 class="panel-title">'+esc(KT('b_top5kw'))+' <span class="chip">'+esc(KT('b_kw_note'))+'</span></h2>'
       + '<div class="grid3">'
-      + (b.kw.length ? b.kw.map(([w,n]) => '<div class="krow"><span class="l">'+esc(w)+'</span><span class="r">'+n+'</span></div>').join('')
+      + (b.kw.length ? b.kw.map(([w,n]) => '<div class="krow"><span class="l">'+esc(w)+'</span><span class="r">'+esc(String(n))+'</span></div>').join('')
         : '<p class="muted">'+esc(KT('b_no_kw'))+'</p>')
       + '</div>'
       /* R1（内部商業情報の保護）：出来事カードから e.action（「建议行动：」）を削除。
          総覧の「推奨アクション」パネルと同じ内容＝入札書類の取得指示や提案判断といった
          社内の営業指示で、テーマ詳細ページ側に取り残されていた。 */
       + (b.recent_events.length ? '<h3 style="margin-top:12px">'+esc(KT('b_events'))+'</h3>'
-        + b.recent_events.map(e => '<div class="evcard '+(e.change_type||'')+'"><div class="m">'+esc(e.date||'')+'</div>'
-          + esc(e.title||'') + '</div>').join('') : '')
+        + b.recent_events.map(evCardHTML).join('') : '')    /* R40-b1 */
       + '</div></div>'
       + '<div class="panel" style="margin-top:14px"><h2 class="panel-title">'+esc(KT('b_allnotes'))+' <span class="chip">'+esc(KT('b_bytype'))+'</span></h2>'
       + Object.entries(byType).map(([ty, ns]) =>
@@ -1261,7 +1284,7 @@ function renderOverview(){
         ? '<div class="small" style="margin:10px 0 4px">'+esc(KT('kw_rising'))+'</div>'
           + (DATA.kw?.rising||[]).map(k => {
             const d = k.cur - k.prev; const cls = d>0?'up':(d<0?'down':'flat'); const sym = d>0?'↑':(d<0?'↓':'→');
-            return '<div class="krow" style="cursor:pointer" data-kwq="'+esc(k.kw)+'"><span class="l">'+esc(k.kw)+'</span><span class="r">'+k.cur+' <span style="opacity:.6">← '+k.prev+'</span> <span class="'+cls+'">'+sym+(d>0?'+':'')+d+'</span></span></div>';
+            return '<div class="krow" style="cursor:pointer" data-kwq="'+esc(k.kw)+'"><span class="l">'+esc(k.kw)+'</span><span class="r">'+esc(String(k.cur))+' <span style="opacity:.6">← '+esc(String(k.prev))+'</span> <span class="'+cls+'">'+sym+(d>0?'+':'')+esc(String(d))+'</span></span></div>';
           }).join('')
         : '')
     + '</div></div>'
@@ -2405,6 +2428,19 @@ function renderHeader(){
   if(fr) fr.textContent = KT('f_rights', {y: (DATA.built_at || '').slice(0,4) || new Date().getFullYear()});
 }
 const buildDate = () => (DATA.built_at || '').slice(0,10) || '—';
+/* R40-b1（grok レビュー）：「継続更新」は、見直し期限内の速報（digest）が
+   1 件でもあるときだけ言う。全部が期限切れなら「更新停止中」と書き、
+   一部だけなら併記する。速報が無ければ何も言わない。 */
+function digestFreshness(){
+  const ds = pubNotes().filter(n => n.type === 'digest');
+  if(!ds.length) return '';
+  const stale = ds.filter(n => isOverdue(n)).length;
+  const fresh = ds.length - stale;
+  const sep = KT('hero_sep');
+  if(fresh && !stale) return sep + KT('hero_live');
+  if(fresh && stale) return sep + KT('hero_live') + sep + KT('hero_some_stale');
+  return sep + KT('hero_all_stale');
+}
 /* R40：検証済みの結論の数。データ側の集計（stats.claims_verified）が正本。
    欠落（旧データ）は 0。 */
 function verifiedClaimCount(){
@@ -2450,7 +2486,7 @@ function renderHero(){
        数え方は公開対象（pubNotes）のうち sources が 1 件以上あるもの。
        遮断ルールを変えれば自動で追随する。 */
     +   '<p class="hero-foot">'+esc(KT('hero_foot', {d: buildDate(),
-          s: pubNotes().filter(n => (n.sources||[]).length > 0).length}))+'</p>'
+          s: pubNotes().filter(n => (n.sources||[]).length > 0).length}) + digestFreshness())+'</p>'
     /* R14：言語注記はヒーローから外した。
        主張（h1・リード・KPI・CTA）の直後に「本文は中国語です」という
        お断りが入り、ファーストビューが断り書きで終わっていた。

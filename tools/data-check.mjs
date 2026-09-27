@@ -255,42 +255,39 @@ if (scrubHits.length) fail(`ページ側の除去規則がまだ ${scrubHits.len
   + `（例: ${few(scrubHits.map(n => n.id), 3)}）— 安全網が働いている＝データ側が未修正`);
 else ok('ページ側の除去規則に当たる箇所なし');
 
-/* ------------------------------ 7b. 集計・抽出テキストに残る内部情報（R40） */
-/* 新しいビルド（kb.py build）は本文から結論（conclusions）・テーマ別の主要結論
-   （boards.*.concl / heat[].concl）・出来事（boards.*.recent_events）・
-   直近 7 日の新着（today）・ウォッチ語（watchlist）を抽出して配る。
-   本文を検査していても、抽出先の文字列に社内パスや呼称が写っていれば同じこと。
-   本文と同じ規則（社内パス・社内呼称・ページ側の除去規則）を当てる。 */
-const textsOf = (v, out = []) => {
+/* ------------------------------ 7b. JSON 全体の文字列に残る内部情報（R40） */
+/* 本文だけでなく、ビルドが抽出・集計して配るあらゆる文字列（結論・テーマ別の主要結論・
+   出来事・キーワード（boards.*.kw / kw.top / kw.rising）・テーマ名（stats.topic_names）・
+   today・watchlist・題名・要約・タグ …）に同じ規則を当てる。
+   フィールドを列挙すると必ず漏れる（grok レビュー：boards.t.kw に社内名が入っても
+   検出されなかった）ので、JSON 全体を再帰的に走査する。オブジェクトのキーも対象
+   （watchlist などはキー自体が語）。数値・真偽値は対象外。
+   トップレベルのキーごとにまとめて報告し、最初の数か所のパスを示す。 */
+const walkStrings = (v, path, out) => {
   if (v == null) return out;
-  if (typeof v === 'string') { out.push(v); return out; }
-  if (Array.isArray(v)) { v.forEach(x => textsOf(x, out)); return out; }
-  if (typeof v === 'object') { Object.entries(v).forEach(([k, x]) => { out.push(k); textsOf(x, out); }); }
+  if (typeof v === 'string') { out.push([path, v]); return out; }
+  if (Array.isArray(v)) { v.forEach((x, i) => walkStrings(x, `${path}[${i}]`, out)); return out; }
+  if (typeof v === 'object') {
+    for (const [k, x] of Object.entries(v)) {
+      out.push([`${path}{key}`, k]);
+      walkStrings(x, `${path}.${k}`, out);
+    }
+  }
   return out;
 };
-const derived = [
-  ['conclusions', D.conclusions],
-  ['boards.*.concl', Object.values(D.boards || {}).map(b => b && b.concl)],
-  ['boards.*.recent_events', Object.values(D.boards || {}).map(b => b && b.recent_events)],
-  ['heat[].concl', (Array.isArray(D.heat) ? D.heat : []).map(h => h && h.concl)],
-  ['today', D.today],
-  ['watchlist', D.watchlist],
-];
-for (const [label, v] of derived) {
-  const texts = textsOf(v);
-  const hits = [];
-  for (const [pl, re] of INTERNAL_PATTERNS) {
-    const c = texts.filter(t => re.test(t)).length;
-    if (c) hits.push(`${pl} ${c} 件`);
-  }
-  for (const w of INTERNAL_WORDS) {
-    const c = texts.filter(t => t.includes(w)).length;
-    if (c) hits.push(`${w} ${c} 件`);
-  }
-  const sc = texts.filter(t => scrubRulesAll.some(([re]) => { re.lastIndex = 0; return re.test(t); })).length;
-  if (sc) hits.push(`ページ側の除去規則 ${sc} 件`);
-  if (hits.length) fail(`${label}: 内部情報 — ${hits.join(' / ')}`);
-  else ok(`${label}: 社内パス・社内呼称なし（文字列 ${texts.length} 個）`);
+const ruleHits = (t) => {
+  const h = [];
+  for (const [pl, re] of INTERNAL_PATTERNS) if (re.test(t)) h.push(pl);
+  for (const w of INTERNAL_WORDS) if (t.includes(w)) h.push(w);
+  if (scrubRulesAll.some(([re]) => { re.lastIndex = 0; return re.test(t); })) h.push('ページ側の除去規則');
+  return h;
+};
+for (const top of Object.keys(D)) {
+  const strs = walkStrings(D[top], top, [[`{key}`, top]]);
+  const bad = [];
+  for (const [p, t] of strs) { const h = ruleHits(t); if (h.length) bad.push(`${p}: ${[...new Set(h)].join(',')}`); }
+  if (bad.length) fail(`${top}: 内部情報 ${bad.length} 箇所 — ${few(bad, 3)}`);
+  else ok(`${top}: 社内パス・社内呼称なし（文字列 ${strs.length} 個）`);
 }
 
 /* -------------------------------------------------------- 8. 配信の設定 */
