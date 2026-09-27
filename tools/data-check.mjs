@@ -242,6 +242,7 @@ else ok('公開分に社内呼称なし');
    データ側が直っていないということ。規則は app.data.js から来ているので、
    規則を足せばこの検査も自動的に強くなる。 */
 const scrubRules = [].concat(RULES.KB_SCRUB || [], RULES.KB_SCRUB_BODY || [], RULES.KB_SCRUB_ANY || []);
+const scrubRulesAll = scrubRules;
 /* 数えるのは「当たったナレッジの件数」。規則ごとに数えると、1 件の題名に
    複数の規則が当たっただけで件数が水増しされる（実測で 1 件が 3 と出た）。 */
 const scrubHits = pub.filter(n => scrubRules.some(([re]) =>
@@ -253,6 +254,44 @@ const scrubHits = pub.filter(n => scrubRules.some(([re]) =>
 if (scrubHits.length) fail(`ページ側の除去規則がまだ ${scrubHits.length} 件のナレッジに当たる`
   + `（例: ${few(scrubHits.map(n => n.id), 3)}）— 安全網が働いている＝データ側が未修正`);
 else ok('ページ側の除去規則に当たる箇所なし');
+
+/* ------------------------------ 7b. 集計・抽出テキストに残る内部情報（R40） */
+/* 新しいビルド（kb.py build）は本文から結論（conclusions）・テーマ別の主要結論
+   （boards.*.concl / heat[].concl）・出来事（boards.*.recent_events）・
+   直近 7 日の新着（today）・ウォッチ語（watchlist）を抽出して配る。
+   本文を検査していても、抽出先の文字列に社内パスや呼称が写っていれば同じこと。
+   本文と同じ規則（社内パス・社内呼称・ページ側の除去規則）を当てる。 */
+const textsOf = (v, out = []) => {
+  if (v == null) return out;
+  if (typeof v === 'string') { out.push(v); return out; }
+  if (Array.isArray(v)) { v.forEach(x => textsOf(x, out)); return out; }
+  if (typeof v === 'object') { Object.entries(v).forEach(([k, x]) => { out.push(k); textsOf(x, out); }); }
+  return out;
+};
+const derived = [
+  ['conclusions', D.conclusions],
+  ['boards.*.concl', Object.values(D.boards || {}).map(b => b && b.concl)],
+  ['boards.*.recent_events', Object.values(D.boards || {}).map(b => b && b.recent_events)],
+  ['heat[].concl', (Array.isArray(D.heat) ? D.heat : []).map(h => h && h.concl)],
+  ['today', D.today],
+  ['watchlist', D.watchlist],
+];
+for (const [label, v] of derived) {
+  const texts = textsOf(v);
+  const hits = [];
+  for (const [pl, re] of INTERNAL_PATTERNS) {
+    const c = texts.filter(t => re.test(t)).length;
+    if (c) hits.push(`${pl} ${c} 件`);
+  }
+  for (const w of INTERNAL_WORDS) {
+    const c = texts.filter(t => t.includes(w)).length;
+    if (c) hits.push(`${w} ${c} 件`);
+  }
+  const sc = texts.filter(t => scrubRulesAll.some(([re]) => { re.lastIndex = 0; return re.test(t); })).length;
+  if (sc) hits.push(`ページ側の除去規則 ${sc} 件`);
+  if (hits.length) fail(`${label}: 内部情報 — ${hits.join(' / ')}`);
+  else ok(`${label}: 社内パス・社内呼称なし（文字列 ${texts.length} 個）`);
+}
 
 /* -------------------------------------------------------- 8. 配信の設定 */
 /* 内容の話ではないので警告どまり。ただし 1.2MB を毎回素で配るのは効く。 */
