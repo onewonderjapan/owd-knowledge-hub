@@ -26,21 +26,18 @@
 
 ## 内容更新（知识库数据）
 
-**内容更新不再改动本仓库**。知识库笔记数据发布在 CDN：`https://cdn.onewonder.co.jp/data/kb-data.json`，页面打开时自动拉取最新版。
+**内容更新不改动本仓库**。站点只展示公开笔记：数据源是公开仓库 [`ow-open-knowledge/knowledge-notes/`](https://github.com/onewonderjapan/ow-open-knowledge/tree/main/knowledge-notes)（非公开知识库 `kb export-public` 的导出，MIT License）。页面打开时读取 `manifest.json`，只拉取 manifest 列出的 `<topic>/<slug>.md`，前端再二次确认 `scope: public`，组装成页面所需的数据形状（`app.data.js` 的 `kbLoadExport` / `kbBuildFromExport`）。
 
-生产线更新流程（内部 workspace 执行）：
-
-```bash
-bash scripts/publish-data.sh   # 构建（含泄漏护栏）→ 上传 CDN → 更新 manifest
-```
-
-本仓库只承载页面结构：`index.html` / `mascot.html` 变更才会触发自动部署（GitHub Actions → AWS）。
+- 取得元：`index.html` 的 `window.__KB_NOTES_BASE__`（默认 `https://raw.githubusercontent.com/onewonderjapan/ow-open-knowledge/main/knowledge-notes/`，CORS `*`、缓存约 5 分钟）。
+- 更新流程：非公开 KB 改笔记 → `kb export-public` → PR 合入 `ow-open-knowledge` 的 `main` → 站点自动反映，无需部署本仓库。
+- 页脚标注笔记来源与 MIT License。
+- 旧的 CDN `data/kb-data.json` 与 `publish-data.sh` 已退役，页面不再读取。
 
 ## 架构（结构-内容分离，已落地）
 
 - **本仓库 = 页面结构**：HTML/CSS/JS 与协作规范。push 到 `main` 后由 GitHub Actions 经 OIDC（免密钥）同步到 AWS S3 + CloudFront，正式站为 `https://hub.onewonder.co.jp`；GitHub Pages 仅作备用镜像。
 - **内容/媒体 = AWS S3 + CloudFront**：`s3://onewonder-public-content`（全私有，仅 CloudFront OAC 可读），对外统一走 `https://cdn.onewonder.co.jp`。基础设施由 Terraform 管理（内部 infra 目录），key 结构约定：`media/`（长缓存）、`data/`（不缓存）、`manifest.json`（版本+清单入口）。
-- **已完成**：吉祥物图片 16 张已迁移至 `media/mascot/`，`mascot.html` 按固定 CDN URL 引用；知识库笔记数据已拆分为 `data/kb-data.json`，`index.html` 启动时拉取渲染，内容更新不再改动本仓库；内容清单见 `https://cdn.onewonder.co.jp/manifest.json`。
+- **已完成**：吉祥物图片 16 张已迁移至 `media/mascot/`，`mascot.html` 按固定 CDN URL 引用；知识库笔记改由 `ow-open-knowledge/knowledge-notes/` 提供（见上节，旧 `data/kb-data.json` 已退役）；内容清单见 `https://cdn.onewonder.co.jp/manifest.json`。
 - **内容上传方要求**：其他仓库的生产线只向指定前缀上传（最小权限凭证），上传后必须更新 `manifest.json` 版本号；上传内容视同公开，先过泄漏扫描。
 
 ## 联系

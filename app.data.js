@@ -16,7 +16,7 @@
    トップレベルの let / const はグローバル字句環境に入るため、後続の
    classic script から DATA / isPublishable などをそのまま参照できる。
    ========================================================================== */
-/* 数据加载：内嵌 payload（内部版）直接用；公开版从 CDN 拉取 kb-data.json */
+/* 数据加载：内嵌 payload があればそれを使う；公開版は ow-open-knowledge/knowledge-notes/（MIT）から組み立てる */
 let DATA = null;
 /* R1（内部商業情報の保護 / 安全網）：顧客機密ナレッジのハードブロック。
    従来 renderDetail は scope === 'customer-confidential' のナレッジに「客户机密」バッジを
@@ -257,13 +257,121 @@ function kbSanitize(d){
   kbScrubTree(d, 0);
   return d;
 }
+/* ==== 2026-10-10：公開データ源を ow-open-knowledge/knowledge-notes/ に切り替え ====
+   旧 CDN の kb-data.json（社内ビルダーの出力）は廃止。公開層は非公開 KB の
+   `kb export-public` が書き出す MIT ライセンスのノート集（manifest.json + Markdown）だけ。
+   ここではその manifest に載っているノートだけを取得し、画面が期待する
+   kb-data 形（notes / stats / graph / heat / boards …）へ組み立てる。
+   manifest に載らないファイルは一切読まない＝公開済みノート以外は画面に出ない。
+   取得元は window.__KB_NOTES_BASE__（末尾 / 付き）。既定は GitHub の raw（CORS: *、キャッシュ 5 分）。 */
+const KB_NOTES_BASE_DEFAULT = 'https://raw.githubusercontent.com/onewonderjapan/ow-open-knowledge/main/knowledge-notes/';
+const KB_NOTES_REPO_URL = 'https://github.com/onewonderjapan/ow-open-knowledge/tree/main/knowledge-notes';
+const KB_NOTES_LICENSE_URL = 'https://github.com/onewonderjapan/ow-open-knowledge/blob/main/knowledge-notes/LICENSE';
+/* manifest の path は「<topic>/<slug>.md」の相対パスだけを許す（../ や絶対パス・URL を弾く） */
+const KB_SAFE_PATH = /^[A-Za-z0-9_-]+\/[A-Za-z0-9_.-]+\.md$/;
+function kbParseFrontmatter(text){
+  const m = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/.exec(text);
+  if(!m) return [{}, text];
+  const fm = {};
+  let cur = null;
+  const unq = v => { v = v.trim(); return (/^".*"$/.test(v) || /^'.*'$/.test(v)) ? v.slice(1, -1) : v; };
+  m[1].split(/\r?\n/).forEach(line => {
+    const li = /^\s+-\s*(.*)$/.exec(line);
+    if(li && cur){ if(!Array.isArray(fm[cur])) fm[cur] = []; fm[cur].push(unq(li[1])); return; }
+    const kv = /^([A-Za-z0-9_-]+):\s*(.*)$/.exec(line);
+    if(!kv) return;
+    cur = kv[1];
+    const v = kv[2].trim();
+    if(v === '') fm[cur] = [];
+    else if(v[0] === '[' && v[v.length - 1] === ']'){
+      const inner = v.slice(1, -1).trim();
+      fm[cur] = inner ? inner.split(',').map(unq) : [];
+    } else fm[cur] = unq(v);
+  });
+  return [fm, text.slice(m[0].length)];
+}
+function kbDaysSince(d, now){
+  const t = Date.parse(String(d || '') + 'T00:00:00Z');
+  return isFinite(t) ? Math.max(0, Math.floor((now - t) / 86400000)) : 0;
+}
+function kbBuildFromExport(manifest, docs, now){
+  now = now || Date.now();
+  const notes = [];
+  docs.forEach(doc => {
+    const [fm, body] = kbParseFrontmatter(doc.text);
+    /* 二重の安全網：export 側で public 以外は出ないが、ページ側でも確かめる */
+    if(fm.scope !== 'public' || fm.id !== doc.id) return;
+    const topic = doc.path.split('/')[0];
+    const toc = [];
+    body.split(/\r?\n/).forEach(l => { const h = /^(#{1,3})\s+(.+?)\s*$/.exec(l); if(h) toc.push({level: h[1].length, text: h[2]}); });
+    const review = Number(fm.review_every) || 0;
+    notes.push({
+      id: fm.id, title: fm.title || fm.id, summary: fm.summary || '', content: body,
+      tags: Array.isArray(fm.tags) ? fm.tags : [], topic, type: fm.type || '', scope: 'public',
+      lang: fm.lang || '', created: fm.created || '', updated: fm.updated || '',
+      verified_at: fm.verified_at || '', status: fm.status || '', line: fm.line || '',
+      review_every: review, stale_limit: review, days: kbDaysSince(fm.updated || fm.created, now),
+      related: Array.isArray(fm.related) ? fm.related : [], entities: Array.isArray(fm.entities) ? fm.entities : [],
+      path: doc.path, source_url: KB_NOTES_REPO_URL + '/' + doc.path,
+      sources: [], charts: [], backlinks: [], supersedes: []
+    });
+  });
+  const byId = {}; notes.forEach(n => { byId[n.id] = n; });
+  const edges = [], seen = {};
+  notes.forEach(n => n.related.forEach(r => {
+    if(!byId[r]) return;
+    byId[r].backlinks.push({id: n.id, title: n.title});
+    const k = [n.id, r].sort().join('|');
+    if(!seen[k]){ seen[k] = 1; edges.push({source: n.id, target: r}); }
+  }));
+  const count = (key) => notes.reduce((o, n) => { if(n[key]) o[n[key]] = (o[n[key]] || 0) + 1; return o; }, {});
+  const tags = {}; notes.forEach(n => n.tags.forEach(t => { tags[t] = (tags[t] || 0) + 1; }));
+  const topics = count('topic');
+  const boards = {}, heat = [];
+  Object.keys(topics).sort().forEach(tp => {
+    const ns = notes.filter(n => n.topic === tp);
+    const types = ns.reduce((o, n) => { if(n.type) o[n.type] = (o[n.type] || 0) + 1; return o; }, {});
+    const row = {topic: tp, notes: ns.length, types, kw: [], concl: [], cross: ns.reduce((s, n) => s + n.related.length, 0),
+                 new7: ns.filter(n => kbDaysSince(n.created, now) <= 7).length,
+                 new30: ns.filter(n => kbDaysSince(n.created, now) <= 30).length,
+                 ev7: 0, ev30: 0, ent7: 0, review: 0};
+    boards[tp] = row; heat.push(row);
+  });
+  const exported = String(manifest.exported_at || '');
+  return {
+    generator: 'ow-open-knowledge/knowledge-notes (' + (manifest.generator || 'kb export-public') + ')',
+    built_at: exported ? exported + 'T00:00:00' : new Date(now).toISOString().slice(0, 19),
+    public: true,
+    license: {name: 'MIT', url: KB_NOTES_LICENSE_URL, source: KB_NOTES_REPO_URL},
+    source_commit: manifest.source_commit || '',
+    notes, conclusions: [], entries: [], kw: {top: [], rising: []}, watchlist: {},
+    heat, boards,
+    graph: {nodes: notes.map(n => ({id: n.id, title: n.title, topic: n.topic})), edges},
+    entity_graph: {nodes: [], edges: []},
+    today: {date: exported, added: [], modified: [], changes: []},
+    review: {stale: [], orphans: [], deprecated: [], unverified: []},
+    validation: {errors: [], warnings: []},
+    stats: {as_of: exported, notes: notes.length, entries: 0, claims: 0, points: 0, platforms: [],
+            topics, types: count('type'), lines: count('line'), tags,
+            topic_names: Object.keys(topics).reduce((o, k) => { o[k] = k; return o; }, {})}
+  };
+}
+function kbLoadExport(base){
+  if(!/\/$/.test(base)) base += '/';
+  const get = (p, kind) => fetch(base + p, {cache: 'no-store'}).then(r => {
+    if(!r.ok) throw new Error('HTTP ' + r.status + ' ' + p);
+    return kind === 'json' ? r.json() : r.text();
+  });
+  return get('manifest.json', 'json').then(manifest => {
+    const list = (Array.isArray(manifest.notes) ? manifest.notes : [])
+      .filter(e => e && typeof e.id === 'string' && KB_SAFE_PATH.test(String(e.path || '')));
+    return Promise.all(list.map(e => get(e.path, 'text').then(text => ({id: e.id, path: e.path, text}))))
+      .then(docs => kbBuildFromExport(manifest, docs));
+  });
+}
 function kbLoadData(){
   const el = document.getElementById('kb-data');
   const t = el ? el.textContent.trim() : '';
   if(t) return Promise.resolve(kbSanitize(JSON.parse(t)));
-  const url = window.__KB_DATA_URL__ || 'data/kb-data.json';
-  return fetch(url, {cache:'no-store'}).then(r => {
-    if(!r.ok) throw new Error('HTTP ' + r.status);
-    return r.json();
-  }).then(kbSanitize);
+  return kbLoadExport(window.__KB_NOTES_BASE__ || KB_NOTES_BASE_DEFAULT).then(kbSanitize);
 }

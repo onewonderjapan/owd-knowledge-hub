@@ -456,6 +456,7 @@ window.lsJSON = function(k, fallback){
   <div class="footer-bottom">
     <span id="foot-rights">© 2026 OneWonder. All rights reserved.</span>
     <span id="foot-updated" class="muted"></span>
+    <span id="foot-notes-license" class="muted">Knowledge notes: <a href="https://github.com/onewonderjapan/ow-open-knowledge/tree/main/knowledge-notes" rel="noopener">ow-open-knowledge/knowledge-notes</a> · <a href="https://github.com/onewonderjapan/ow-open-knowledge/blob/main/knowledge-notes/LICENSE" rel="noopener">MIT License</a> © OneWonder</span>
   </div>
 </footer>
 <div class="tooltip" id="tip"></div>
@@ -515,7 +516,8 @@ window.lsJSON = function(k, fallback){
 <!-- 多言語辞書とタクソノミ。PR #1 指摘 1 への対応で app.i18n.js へ分離した。
      言語判定（上の script）の後、app.data.js と本体の前に読み込むこと。 -->
 <script src="app.i18n.js"></script>
-<script>window.__KB_DATA_URL__="https://cdn.onewonder.co.jp/data/kb-data.json";</script>
+<!-- 公開ノートの取得元（ow-open-knowledge/knowledge-notes/、MIT）。旧 CDN の kb-data.json は廃止。 -->
+<script>window.__KB_NOTES_BASE__="https://raw.githubusercontent.com/onewonderjapan/ow-open-knowledge/main/knowledge-notes/";</script>
 <!-- データ層（取得・正規化・遮断・スクラブ）。PR #1 指摘 1 への対応で分離した。
      遮断はあくまで安全網で、根治は publish-data.sh 側（指摘 3）。 -->
 <script src="app.data.js"></script>
