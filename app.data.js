@@ -64,13 +64,31 @@ let DATA = null;
    恒久対策は publish-data.sh 側で出力しないこと。 */
 const BLOCK_SCOPES = ['customer-confidential', 'internal'];
 const BLOCK_TYPES = ['runbook'];
-/* R33：この KB で「検証済み」とは、検証日（verified_at）を持つことをいう。
-   status=='verified' は実測で 4 件が検証日を持たず（日付の裏づけが無い）、
-   review.unverified は公開 17 件すべてを載せるため、どちらも判定には使わない。
-   詳細画面の「検証日 / 次回見直し」と同じ軸なので、画面間で食い違わない。 */
-const isVerified = n => !!(n && n.verified_at);
-/* R33：見直し期限を過ぎているか。詳細画面の鮮度ドットと同じ材料を使う。 */
-const isOverdue = n => !!(n && n.stale_limit && (n.days || 0) > n.stale_limit);
+/* R40（2026-09-27 観衆レビュー P0-4）：「検証済み」の判定をデータ側の n.verified に一本化する。
+   従来は「検証日（verified_at）を持つか」で数えていたため、見直し期限を 22 日過ぎた
+   digest 9 件が「検証済み」に数えられ、一方で status=verified の実験 4 件は
+   「検証日 —」と表示される、という 3 通りの口径が画面ごとに混在していた。
+   新しいビルド（kb.py build）は n.verified（検証日あり かつ 見直し期限内）と
+   n.overdue（見直し期限 review_due を as-of 時点で過ぎた）を出力する。
+   旧データ（n.verified 欠落）では**未検証として扱う**＝過大に主張しない。
+   overdue は欠落時のみ旧来の式（経過日数 > stale_limit）で補う
+   （期限切れは「弱い側」の主張なので、補っても過大表示にはならない）。 */
+const isVerified = n => !!(n && n.verified === true);
+const isOverdue = n => {
+  if(!n) return false;
+  if(typeof n.overdue === 'boolean') return n.overdue;
+  return !!(n.stale_limit && (n.days || 0) > n.stale_limit);
+};
+/* R40（P1-2）：1 件ごとの状態。一覧のドット・詳細のバッジ・絞り込み・凡例が
+   すべてここを通るので、画面間で口径が食い違わない。
+   draft（未実施の計画・下書き）を最優先にするのは、期限内でも「結論ではない」ため。 */
+const noteStatus = n => {
+  if(!n) return 'unverified';
+  if(String(n.status || '').toLowerCase() === 'draft') return 'draft';
+  if(isOverdue(n)) return 'overdue';
+  if(isVerified(n)) return 'verified';
+  return 'unverified';
+};
 const isPublishable = n => !!n
   && BLOCK_SCOPES.indexOf(n.scope) < 0
   && BLOCK_TYPES.indexOf(n.type) < 0;
@@ -165,15 +183,23 @@ function kbNormalize(d){
     n.summary = str(n.summary);
     n.content = str(n.content);
     n.days = num(n.days);
+    /* R40：旧データには verified が無い。欠落＝未検証（true のときだけ真） */
+    n.verified = n.verified === true;
   });
   d.conclusions = arr(d.conclusions);
-  d.conclusions.forEach(function(c){ if(c){ c.text = str(c.text); c.section = str(c.section); } });
+  d.conclusions.forEach(function(c){ if(c){ c.text = str(c.text); c.section = str(c.section); c.verified = c.verified === true; } });
   d.entries = arr(d.entries);
   d.entries.forEach(function(e){ if(e) e.text = str(e.text); });
   d.heat = arr(d.heat);
-  d.heat.forEach(function(h){ if(h) h.kw = arr(h.kw); });
+  d.heat.forEach(function(h){ if(h){ h.kw = arr(h.kw); h.concl = arr(h.concl); } });
   if(d.boards && typeof d.boards === 'object')
-    Object.keys(d.boards).forEach(function(k){ if(d.boards[k]) d.boards[k].kw = arr(d.boards[k].kw); });
+    Object.keys(d.boards).forEach(function(k){
+      var b = d.boards[k]; if(!b) return;
+      b.kw = arr(b.kw);
+      /* R40：旧データの boards には recent_events が無く、テーマ詳細が例外で開けなかった */
+      b.concl = arr(b.concl);
+      b.recent_events = arr(b.recent_events);
+    });
   if(!d.boards || typeof d.boards !== 'object') d.boards = {};
   if(!d.watchlist || typeof d.watchlist !== 'object') d.watchlist = {};
   if(!d.kw || typeof d.kw !== 'object') d.kw = {};
@@ -181,6 +207,7 @@ function kbNormalize(d){
   d.kw.rising = arr(d.kw.rising);
   if(!d.today || typeof d.today !== 'object') d.today = {};
   d.today.added = arr(d.today.added);
+  d.today.modified = arr(d.today.modified);
   if(!d.review || typeof d.review !== 'object') d.review = {};
   d.review.unverified = arr(d.review.unverified);
   ['graph','entity_graph'].forEach(function(g){
@@ -198,7 +225,9 @@ function kbNormalize(d){
   if(!st.types || typeof st.types !== 'object') st.types = {};
   if(!st.lines || typeof st.lines !== 'object') st.lines = {};
   st.platforms = arr(st.platforms);
-  ['notes','entries','claims','points'].forEach(function(k){ if(typeof st[k] !== 'number') st[k] = 0; });
+  /* R40：claims_verified / verified / overdue は新ビルドで追加された集計。
+     旧データでは欠落するので 0 とする（＝検証済みを過大に主張しない）。 */
+  ['notes','entries','claims','points','claims_verified','verified','overdue'].forEach(function(k){ if(typeof st[k] !== 'number') st[k] = 0; });
   return d;
 }
 function kbSanitize(d){

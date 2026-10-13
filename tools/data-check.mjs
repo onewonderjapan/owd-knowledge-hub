@@ -242,6 +242,7 @@ else ok('公開分に社内呼称なし');
    データ側が直っていないということ。規則は app.data.js から来ているので、
    規則を足せばこの検査も自動的に強くなる。 */
 const scrubRules = [].concat(RULES.KB_SCRUB || [], RULES.KB_SCRUB_BODY || [], RULES.KB_SCRUB_ANY || []);
+const scrubRulesAll = scrubRules;
 /* 数えるのは「当たったナレッジの件数」。規則ごとに数えると、1 件の題名に
    複数の規則が当たっただけで件数が水増しされる（実測で 1 件が 3 と出た）。 */
 const scrubHits = pub.filter(n => scrubRules.some(([re]) =>
@@ -253,6 +254,41 @@ const scrubHits = pub.filter(n => scrubRules.some(([re]) =>
 if (scrubHits.length) fail(`ページ側の除去規則がまだ ${scrubHits.length} 件のナレッジに当たる`
   + `（例: ${few(scrubHits.map(n => n.id), 3)}）— 安全網が働いている＝データ側が未修正`);
 else ok('ページ側の除去規則に当たる箇所なし');
+
+/* ------------------------------ 7b. JSON 全体の文字列に残る内部情報（R40） */
+/* 本文だけでなく、ビルドが抽出・集計して配るあらゆる文字列（結論・テーマ別の主要結論・
+   出来事・キーワード（boards.*.kw / kw.top / kw.rising）・テーマ名（stats.topic_names）・
+   today・watchlist・題名・要約・タグ …）に同じ規則を当てる。
+   フィールドを列挙すると必ず漏れる（grok レビュー：boards.t.kw に社内名が入っても
+   検出されなかった）ので、JSON 全体を再帰的に走査する。オブジェクトのキーも対象
+   （watchlist などはキー自体が語）。数値・真偽値は対象外。
+   トップレベルのキーごとにまとめて報告し、最初の数か所のパスを示す。 */
+const walkStrings = (v, path, out) => {
+  if (v == null) return out;
+  if (typeof v === 'string') { out.push([path, v]); return out; }
+  if (Array.isArray(v)) { v.forEach((x, i) => walkStrings(x, `${path}[${i}]`, out)); return out; }
+  if (typeof v === 'object') {
+    for (const [k, x] of Object.entries(v)) {
+      out.push([`${path}{key}`, k]);
+      walkStrings(x, `${path}.${k}`, out);
+    }
+  }
+  return out;
+};
+const ruleHits = (t) => {
+  const h = [];
+  for (const [pl, re] of INTERNAL_PATTERNS) if (re.test(t)) h.push(pl);
+  for (const w of INTERNAL_WORDS) if (t.includes(w)) h.push(w);
+  if (scrubRulesAll.some(([re]) => { re.lastIndex = 0; return re.test(t); })) h.push('ページ側の除去規則');
+  return h;
+};
+for (const top of Object.keys(D)) {
+  const strs = walkStrings(D[top], top, [[`{key}`, top]]);
+  const bad = [];
+  for (const [p, t] of strs) { const h = ruleHits(t); if (h.length) bad.push(`${p}: ${[...new Set(h)].join(',')}`); }
+  if (bad.length) fail(`${top}: 内部情報 ${bad.length} 箇所 — ${few(bad, 3)}`);
+  else ok(`${top}: 社内パス・社内呼称なし（文字列 ${strs.length} 個）`);
+}
 
 /* -------------------------------------------------------- 8. 配信の設定 */
 /* 内容の話ではないので警告どまり。ただし 1.2MB を毎回素で配るのは効く。 */
