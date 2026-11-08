@@ -1,0 +1,4 @@
+# data-check の回帰 fixture（tools/fixtures/leak-notes/）は manifest.json に
+# sha256 を刻んであるため、改行コードが変わると検証が壊れる。
+# Windows の autocrlf による LF→CRLF 変換を避けるため、この配下は常に LF。
+tools/fixtures/leak-notes/** text eol=lf
