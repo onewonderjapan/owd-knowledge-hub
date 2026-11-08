@@ -30,6 +30,9 @@
 
 - 取得元：`index.html` 的 `window.__KB_NOTES_BASE__`（默认 `https://raw.githubusercontent.com/onewonderjapan/ow-open-knowledge/main/knowledge-notes/`，CORS `*`、缓存约 5 分钟）。
 - 更新流程：非公开 KB 改笔记 → `kb export-public` → PR 合入 `ow-open-knowledge` 的 `main` → 站点自动反映，无需部署本仓库。
+- 数据检查（`node tools/data-check.mjs`，无依赖）：按页面同一条链路抓 `__KB_NOTES_BASE__` 的 `manifest.json` + 逐篇笔记 md，做泄漏检查（禁止语/社内路径清单继承旧版工具；frontmatter 解析、路径白名单、页面侧 scrub 规则直接复用 `app.data.js` 的实现，避免双重维护）与结构检查（每篇 `scope: public` 且 id 与 manifest 一致、`count` ↔ `notes` 一致、sha256 校验、`related` 引用存在、manifest 未收录的孤儿 .md）。
+  - `--file DIR`：对本地 `knowledge-notes` 检出（如 ow-open-knowledge clone）做同样检查，并额外比对目录内文件与 manifest 的一致性（raw URL 列不了目录，孤儿检查只能在此模式做）；`--sample N` 只抽查 N 篇（输出警告，CI 用全量默认）。
+  - 退出码语义与旧工具一致：`0` 绿 / `1` 红（有泄漏或结构破绽）/ `2` 取不到或解析不了数据。
 - 页脚标注笔记来源与 MIT License。
 - 旧的 CDN `data/kb-data.json` 与 `publish-data.sh` 已退役，页面不再读取。
 
