@@ -1,0 +1,55 @@
+{
+ "built_at": "2026-09-27T00:00:00",
+ "stats": {
+  "notes": 1,
+  "topics": {
+   "t": 1
+  },
+  "topic_names": {
+   "t": "T"
+  }
+ },
+ "notes": [
+  {
+   "id": "20260927-fixture",
+   "title": "fixture",
+   "summary": "",
+   "content": "# fixture\n",
+   "topic": "t",
+   "type": "research",
+   "scope": "public",
+   "tags": []
+  }
+ ],
+ "boards": {
+  "t": {
+   "topic": "t",
+   "name": "T",
+   "kw": [
+    [
+     "ark-harness",
+     1
+    ]
+   ],
+   "concl": [],
+   "recent_events": []
+  }
+ },
+ "heat": [
+  {
+   "topic": "t",
+   "kw": []
+  }
+ ],
+ "conclusions": [],
+ "entries": [],
+ "today": {
+  "date": "2026-09-27",
+  "added": []
+ },
+ "watchlist": {},
+ "kw": {
+  "top": [],
+  "rising": []
+ }
+}
