@@ -7,8 +7,9 @@
  *   修正後は evCardHTML（app.js のトップレベル）が閉じた対応表で class を決め、
  *   文字はすべてエスケープする。ここではその関数を DOM 無しで直接呼んで確かめる。
  *
- *   あわせて data-check.mjs が「JSON のどこに社内名が入っても落ちる」ことを、
- *   わざと漏らした fixture（tools/fixtures/leak-boards-kw.json）で確かめる。
+ *   あわせて data-check.mjs が「ノートのどこに社内名が入っても落ちる」ことを、
+ *   わざと漏らした fixture（tools/fixtures/leak-notes/、PR #6 后の
+ *   ow-open-knowledge/knowledge-notes 形式の検出）で確かめる。
  *
  * 使い方：node tools/render-check.mjs   （リポジトリのルートで実行。失敗なら exit 1）
  * 依存パッケージなし（Node 標準のみ）。
@@ -56,10 +57,10 @@ const oks = [];
 
 /* ------------------------------------- 2. data-check が漏れ fixture で落ちるか */
 {
-  const r = spawnSync(process.execPath, ['tools/data-check.mjs', '--file', 'tools/fixtures/leak-boards-kw.json'], { encoding: 'utf8' });
+  const r = spawnSync(process.execPath, ['tools/data-check.mjs', '--file', 'tools/fixtures/leak-notes'], { encoding: 'utf8' });
   if (r.status !== 1) fails.push(`data-check: 漏れ fixture で exit 1 にならない（exit ${r.status}）`);
-  else if (!/boards\.t\.kw\[0\]\[0\]: ark-harness/.test(r.stdout)) fails.push('data-check: 漏れ fixture の検出箇所（boards.t.kw）が報告されない');
-  else oks.push('data-check: boards.t.kw に社内名を入れた fixture を検出（exit 1）');
+  else if (!/fixture-leak\.md: [^ ]*ark-harness/.test(r.stdout)) fails.push('data-check: 漏れ fixture の検出箇所（fixture-leak.md の社内パス）が報告されない');
+  else oks.push('data-check: fixture-leak.md の社内パス（ark-harness）を検出（exit 1）');
 }
 
 for (const m of oks) console.log(`  OK    ${m}`);

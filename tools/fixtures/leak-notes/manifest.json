@@ -1,0 +1,17 @@
+{
+  "count": 2,
+  "exported_at": "2026-11-08",
+  "generator": "kb export-public (fixture)",
+  "notes": [
+    {
+      "id": "fixture-clean",
+      "path": "qa-gates/fixture-clean.md",
+      "sha256": "6fc260b5372a25ef5da720da76613d145016529908c9156938aed8e4d7f4f94b"
+    },
+    {
+      "id": "fixture-leak",
+      "path": "presales-research/fixture-leak.md",
+      "sha256": "b554f4a27bc00d22d3fa2bf6736b616e09b4c2efb05cd67faf79f11cee665714"
+    }
+  ]
+}
